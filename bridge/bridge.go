@@ -36,7 +36,7 @@ var MicroserviceC *MicroserviceClient
 func NewMicroserviceClient() *MicroserviceClient {
 	baseURL := os.Getenv("GATEWAY_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:8080/api"
+		baseURL = "https://11859073a800.ngrok-free.app/api"
 	}
 
 	MicroserviceC = &MicroserviceClient{
