@@ -144,8 +144,7 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 	return responseObj
 }
 
-func CallAdapterSinpe(method, path string, body interface{}, headers http.Header) interface{} {
-	mc := NewMicroserviceClient()
+func (mc *MicroserviceClient) CallAdapterSinpe(method, path string, body interface{}, headers http.Header) interface{} {
 	fullPath := fmt.Sprintf("/adapter/sinpe/IEntidadXBS%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
@@ -155,8 +154,7 @@ func CallAdapterSinpe(method, path string, body interface{}, headers http.Header
 	})
 }
 
-func CallAdminCore(method, path string, body interface{}, headers http.Header) interface{} {
-	mc := NewMicroserviceClient()
+func (mc *MicroserviceClient) CallAdminCore(method, path string, body interface{}, headers http.Header) interface{} {
 	fullPath := fmt.Sprintf("/admin%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
@@ -166,8 +164,7 @@ func CallAdminCore(method, path string, body interface{}, headers http.Header) i
 	})
 }
 
-func CallIssuerCore(method, path string, body interface{}, headers http.Header) interface{} {
-	mc := NewMicroserviceClient()
+func (mc *MicroserviceClient) CallIssuerCore(method, path string, body interface{}, headers http.Header) interface{} {
 	fullPath := fmt.Sprintf("/issuer%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
@@ -177,8 +174,7 @@ func CallIssuerCore(method, path string, body interface{}, headers http.Header) 
 	})
 }
 
-func CallCustomerCore(method, path string, body interface{}, headers http.Header) interface{} {
-	mc := NewMicroserviceClient()
+func (mc *MicroserviceClient) CallCustomerCore(method, path string, body interface{}, headers http.Header) interface{} {
 	fullPath := fmt.Sprintf("/customer%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
