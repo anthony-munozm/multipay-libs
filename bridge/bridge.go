@@ -80,8 +80,8 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 
 		if options.Headers != nil {
 			for key, values := range options.Headers {
-				for _, value := range values {
-					if key != "Idempotency-Key" && _ != "Idempotency-Key" {
+				for keyValue, value := range values {
+					if key != "Idempotency-Key" && keyValue != "Idempotency-Key" {
 						req.Header.Add(key, value)
 					}
 				}
