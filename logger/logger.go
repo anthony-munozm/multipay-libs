@@ -36,15 +36,35 @@ func NewLogger() *zap.Logger {
 }
 
 func ExtractLogContext(r *http.Request) LogContext {
+	if r == nil {
+		return LogContext{
+			TraceID: "",
+			CorrelationID: "",
+			Tenant: "",
+			Country: "",
+			Canton: "",
+			RequestID: uuid.New().String(),
+			UserID: "",
+			Actor: "",
+		}
+	}
+
+	var headers http.Header
+	if r.Header != nil {
+		headers = r.Header
+	} else {
+		headers = make(http.Header)
+	}
+
 	return LogContext{
-		TraceID: r.Header.Get("X-Trace-ID"),
-		CorrelationID: r.Header.Get("X-Correlation-ID"),
-		Tenant: r.Header.Get("X-Tenant-ID"),
-		Country: r.Header.Get("X-Country"),
-		Canton: r.Header.Get("X-Canton"),
+		TraceID: headers.Get("X-Trace-ID"),
+		CorrelationID: headers.Get("X-Correlation-ID"),
+		Tenant: headers.Get("X-Tenant-ID"),
+		Country: headers.Get("X-Country"),
+		Canton: headers.Get("X-Canton"),
 		RequestID: uuid.New().String(),
-		UserID: r.Header.Get("X-User-ID"),
-		Actor: r.Header.Get("X-Actor"),
+		UserID: headers.Get("X-User-ID"),
+		Actor: headers.Get("X-Actor"),
 	}
 }
 
