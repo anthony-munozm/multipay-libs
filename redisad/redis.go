@@ -12,20 +12,20 @@ import (
 
 type SettingsDTO struct {
 	ID        uuid.UUID       `json:"id"`
-	Key      string          `json:"key"`
-    Value      string          `json:"value"`
-    ValueType  string          `json:"value_type"`
-    Scope  string          `json:"scope"`
-    TargetID  string          `json:"target_id"`
-    ValidFrom  time.Time          `json:"valid_from"`
-    ValidTo  time.Time          `json:"valid_to"`
-    Version  int          `json:"version"`
-    Description  string          `json:"description"`
-    CreatedBy  string          `json:"created_by"`
+	Key      interface{}          `json:"key"`
+  Value      string          `json:"value"`
+  ValueType  string          `json:"value_type"`
+  Scope  string          `json:"scope"`
+  TargetID  string          `json:"target_id"`
+  ValidFrom  time.Time          `json:"valid_from"`
+  ValidTo  time.Time          `json:"valid_to"`
+  Version  int          `json:"version"`
+  Description  string          `json:"description"`
+  CreatedBy  string          `json:"created_by"`
 	IsActive   bool            `json:"is_active"`
-    Metadata  json.RawMessage          `json:"metadata"`
-    CreatedAt time.Time       `json:"created_at"`
-    UpdatedAt time.Time       `json:"updated_at"`
+  Metadata  json.RawMessage          `json:"metadata"`
+  CreatedAt time.Time       `json:"created_at"`
+  UpdatedAt time.Time       `json:"updated_at"`
 }
 
 var Rdb *redis.Client
