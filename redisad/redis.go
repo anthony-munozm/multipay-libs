@@ -12,8 +12,8 @@ import (
 
 type SettingsDTO struct {
 	ID        uuid.UUID       `json:"id"`
-	Key      interface{}          `json:"key"`
-  Value      string          `json:"value"`
+	Key      string          `json:"key"`
+  Value      interface{}          `json:"value"`
   ValueType  string          `json:"value_type"`
   Scope  string          `json:"scope"`
   TargetID  string          `json:"target_id"`
