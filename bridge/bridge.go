@@ -196,3 +196,13 @@ func (mc *MicroserviceClient) CallAccountingCore(method, path string, body inter
 		Headers: headers,
 	})
 }
+
+func (mc *MicroserviceClient) CallTransactionCore(method, path string, body interface{}, headers http.Header) interface{} {
+	fullPath := fmt.Sprintf("/transaction%s", path)
+	return mc.CallMicroservice(RequestOptions{
+		Method:  method,
+		Path:    fullPath,
+		Body:    body,
+		Headers: headers,
+	})
+}
