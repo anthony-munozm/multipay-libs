@@ -81,21 +81,30 @@ func GetUniversalCacheTyped[T any](rdb *redis.Client, key string) (T, error) {
   return result, nil
 }
 
-func GetSettingsList(rdb *redis.Client, microservice string, settingsVersion string) []map[string]interface{} {
-    key := fmt.Sprintf("config:%s", microservice)
+func GetCacheByMicroservice(rdb *redis.Client, microservice string) []byte {
+  key := fmt.Sprintf("config:%s", microservice)
 
-    val, err := rdb.Get(context.Background(), key).Result()
-    if err != nil {
-        if err == redis.Nil {
-          log.Println("No existe configuración")
-            return nil
-        }
-        log.Println("Error leyendo lista", err)
-        return nil
+  val, err := rdb.Get(context.Background(), key).Result()
+  if err != nil {
+      if err == redis.Nil {
+        log.Println("No existe configuración")
+          return nil
+      }
+      log.Println("Error leyendo lista", err)
+      return nil
+  }
+
+  return []byte(val)
+}
+
+func GetSettingsList(rdb *redis.Client, microservice string, settingsVersion string) []map[string]interface{} {
+    val := GetCacheByMicroservice(rdb, microservice)
+    if val == nil {
+      return nil
     }
 
     var configs []map[string]interface{}
-    err = json.Unmarshal([]byte(val), &configs)
+    err := json.Unmarshal(val, &configs)
     if err != nil {
       log.Println("Error parseando lista", err)
       return nil
@@ -118,19 +127,13 @@ func GetSettingsList(rdb *redis.Client, microservice string, settingsVersion str
 }
 
 func GetSetting(rdb *redis.Client, microservice string, settingKey string, settingsVersion string) interface{} {
-  key := fmt.Sprintf("config:%s", microservice)
-  val, err := rdb.Get(context.Background(), key).Result()
-  if err != nil {
-    if err == redis.Nil {
-      log.Println("No existe configuración")
-        return nil
-    }
-    log.Println("Error leyendo lista", err)
+  val := GetCacheByMicroservice(rdb, microservice)
+  if val == nil {
     return nil
   }
 
   var config map[string]interface{}
-  err = json.Unmarshal([]byte(val), &config)
+  err := json.Unmarshal(val, &config)
   if err != nil {
     log.Println("Error parseando lista", err)
     return nil
