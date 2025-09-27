@@ -140,11 +140,14 @@ func GetSetting(rdb *redis.Client, microservice string, settingKey string, setti
   }
 
   for _, config := range configs {
-    version, exists := config["version"];
-    if exists {
-      versionStr := fmt.Sprintf("%v", version)
-      if versionStr == settingsVersion && config[settingKey] != nil { 
-        return config[settingKey]
+    version, existsV := config["version"];
+    if existsV  {
+      key, existskey := config["key"];
+      if existskey {
+        versionStr := fmt.Sprintf("%v", version)
+        if versionStr == settingsVersion && key == settingKey { 
+          return config["value"]
+        }
       }
     }
   }
