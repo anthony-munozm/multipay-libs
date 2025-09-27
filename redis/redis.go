@@ -132,29 +132,25 @@ func GetSetting(rdb *redis.Client, microservice string, settingKey string, setti
     return nil
   }
 
-  var config map[string]interface{}
-  err := json.Unmarshal(val, &config)
+  var configs []map[string]interface{}
+  err := json.Unmarshal(val, &configs)
   if err != nil {
     log.Println("Error parseando lista", err)
     return nil
   }
 
-  value, exists := config[settingKey]
-  if exists {
+  for _, config := range configs {
     version, exists := config["version"];
     if exists {
       versionStr := fmt.Sprintf("%v", version)
-      if versionStr == settingsVersion { 
-        log.Println("Versiones iguales", value)
-        return value
+      if versionStr == settingsVersion && config[settingKey] != nil { 
+        return config[settingKey]
       }
     }
-    log.Println("No existe configuración")
-    return nil
-  } else {
-    log.Println("No existe configuración")
-    return nil
   }
+
+  log.Println("No existe configuración")
+  return nil
 }
 
 func UpdateSettingsList(rdb *redis.Client, microservice string, ttl time.Duration) { 
