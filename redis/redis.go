@@ -117,6 +117,43 @@ func GetSettingsList(rdb *redis.Client, microservice string, settingsVersion str
     return cleanConfigs
 }
 
+func GetSetting(rdb *redis.Client, microservice string, settingKey string, settingsVersion string) interface{} {
+  key := fmt.Sprintf("config:%s", microservice)
+  val, err := rdb.Get(context.Background(), key).Result()
+  if err != nil {
+    if err == redis.Nil {
+      log.Println("No existe configuración")
+        return nil
+    }
+    log.Println("Error leyendo lista", err)
+    return nil
+  }
+
+  var config map[string]interface{}
+  err = json.Unmarshal([]byte(val), &config)
+  if err != nil {
+    log.Println("Error parseando lista", err)
+    return nil
+  }
+
+  value, exists := config[settingKey]
+  if exists {
+    version, exists := config["version"];
+    if exists {
+      versionStr := fmt.Sprintf("%v", version)
+      if versionStr == settingsVersion { 
+        log.Println("Versiones iguales", value)
+        return value
+      }
+    }
+    log.Println("No existe configuración")
+    return nil
+  } else {
+    log.Println("No existe configuración")
+    return nil
+  }
+}
+
 func UpdateSettingsList(rdb *redis.Client, microservice string, ttl time.Duration) { 
   settings := bridge.NewMicroserviceClient().CallAdminCore("GET", "/settings", nil, nil)
   if settingsMap, ok := settings.(map[string]interface{}); ok {
