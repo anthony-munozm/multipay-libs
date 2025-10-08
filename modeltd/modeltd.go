@@ -1,4 +1,4 @@
-package modelToDict
+package modeltd
 
 import (
   "net/http"
