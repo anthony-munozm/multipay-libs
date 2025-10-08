@@ -75,8 +75,12 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 			}
 		}
 
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Accept", "application/json")
+		if req.Header.Get("Content-Type") == "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		if req.Header.Get("Accept") == "" {
+			req.Header.Set("Accept", "application/json")
+		}
 
 		if options.Headers != nil {
 			for key, values := range options.Headers {
