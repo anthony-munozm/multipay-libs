@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func GenerateErrorMessage(code string, detalle string) map[string]interface{} {
+func GenerateErrorMessage(code string, detalle string) error {
 	functionName := "unknown"
 	line := 0
 	microserviceName := "unknown"
@@ -25,27 +25,21 @@ func GenerateErrorMessage(code string, detalle string) map[string]interface{} {
 		microserviceName = os.Getenv("MICROSERVICE_NAME")
 	}
 
-	returnMap := map[string]interface{}{
-		"http_status": 404,
-		"message": fmt.Errorf("[%s] Error en %s() línea %d → %s: %s -> detalle: %s", microserviceName, functionName, line, "GLOBAL_CATALOG_ERROR_NOT_FOUND", "Error Code not found, please check the global catalog errors", detalle),
-	}
+	defaultError := fmt.Errorf("[%s] Error en %s() línea %d → %s: %s -> detalle: %s", microserviceName, functionName, line, "GLOBAL_CATALOG_ERROR_NOT_FOUND", "Error Code not found, please check the global catalog errors", detalle)
+
 	globalCatalogErrors, err := redis.GetUniversalCacheTyped[map[string]interface{}](redis.Rdb, "global_catalog_errors")
 	if err != nil {
-		return returnMap
+		return defaultError
 	}
 
 	if globalCatalogError, ok := globalCatalogErrors[code]; ok && globalCatalogError != "" {
 		if respMap, ok := globalCatalogError.(map[string]interface{}); ok && respMap != nil {
 			if msg, ok := respMap["message"].(string); ok && msg != "" {
-				if httpStatusCode, ok := respMap["http_status_code"].(int); ok {
-					returnMap["http_status"] = httpStatusCode
-				}
-				returnMap["message"] = fmt.Errorf("[%s] Error en %s() línea %d → %s: %s -> detalle: %s", microserviceName, functionName, line, code, respMap["message"].(string), detalle)
-				return returnMap
+				return fmt.Errorf("[%s] Error en %s() línea %d → %s: %s -> detalle: %s", microserviceName, functionName, line, code, respMap["message"].(string), detalle)
 			}
 		}
 	}
 
-	return returnMap
+	return defaultError
 
 }
