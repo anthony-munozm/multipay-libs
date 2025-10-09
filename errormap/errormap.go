@@ -44,11 +44,11 @@ func GenerateErrorMessage(code string, detalle string) error {
 	return defaultError
 }
 
-func GetHttpStatusByCode(code string) int {
+func GetHttpStatusByCode(code string, defaultStatusCode int) int {
 
 	globalCatalogErrors, err := redis.GetUniversalCacheTyped[map[string]interface{}](redis.Rdb, "global_catalog_errors")
 	if err != nil {
-		return 404
+		return defaultStatusCode
 	}
 
 	if globalCatalogError, ok := globalCatalogErrors[code]; ok && globalCatalogError != "" {
@@ -62,5 +62,5 @@ func GetHttpStatusByCode(code string) int {
 		}
 	}
 
-	return 404
+	return defaultStatusCode
 }
