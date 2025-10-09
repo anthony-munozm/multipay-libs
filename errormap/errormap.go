@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func GenerateErrorMessage(code string) error {
+func GenerateErrorMessage(code string, detalle string) error {
 	functionName := "unknown"
 	line := 0
 	microserviceName := "unknown"
@@ -25,7 +25,7 @@ func GenerateErrorMessage(code string) error {
 		microserviceName = os.Getenv("MICROSERVICE_NAME")
 	}
 
-	defaultError := fmt.Errorf("[%s] Error en %s() línea %d → %s: %s", microserviceName, functionName, line, "GLOBAL_CATALOG_ERROR_NOT_FOUND", "Error Code not found, please check the global catalog errors")
+	defaultError := fmt.Errorf("[%s] Error en %s() línea %d → %s: %s -> detalle: %s", microserviceName, functionName, line, "GLOBAL_CATALOG_ERROR_NOT_FOUND", "Error Code not found, please check the global catalog errors", detalle)
 
 	globalCatalogErrors, err := redis.GetUniversalCacheTyped[map[string]interface{}](redis.Rdb, "global_catalog_errors")
 	if err != nil {
@@ -35,7 +35,7 @@ func GenerateErrorMessage(code string) error {
 	if globalCatalogError, ok := globalCatalogErrors[code]; ok && globalCatalogError != "" {
 		if respMap, ok := globalCatalogError.(map[string]interface{}); ok && respMap != nil {
 			if msg, ok := respMap["message"].(string); ok && msg != "" {
-				return fmt.Errorf("[%s] Error en %s() línea %d → %s: %s", microserviceName, functionName, line, code, respMap["message"].(string))
+				return fmt.Errorf("[%s] Error en %s() línea %d → %s: %s -> detalle: %s", microserviceName, functionName, line, code, respMap["message"].(string), detalle)
 			}
 		}
 	}
