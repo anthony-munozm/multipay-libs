@@ -56,13 +56,17 @@ func SaveSettingsList(rdb *redis.Client, microservice string, configs []Settings
     log.Println("Lista de configuraciones guardada")
 }
 
-func SaveUniversalCache(rdb *redis.Client, key string, data interface{}) {
+func SaveUniversalCache(rdb *redis.Client, key string, data interface{}, ttl time.Duration) {
   jsonData, err := json.Marshal(data)
   if err != nil {
     log.Println("Error creando lista", err)
   }
 
-  err = rdb.Set(context.Background(), key, jsonData, time.Hour).Err()
+  if ttl == 0 {
+    ttl = time.Hour
+  }
+
+  err = rdb.Set(context.Background(), key, jsonData, ttl).Err()
   if err != nil {
     log.Println("Error guardando lista", err)
   }
