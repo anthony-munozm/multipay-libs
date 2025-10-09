@@ -5,6 +5,7 @@ import (
 	"os"
 	"github.com/anthony-munozm/multipay-libs/redis"
 	"fmt"
+	"strconv"
 )
 
 func GenerateErrorMessage(code string, detalle string) error {
@@ -41,5 +42,25 @@ func GenerateErrorMessage(code string, detalle string) error {
 	}
 
 	return defaultError
+}
 
+func GetHttpStatusByCode(code string) int {
+
+	globalCatalogErrors, err := redis.GetUniversalCacheTyped[map[string]interface{}](redis.Rdb, "global_catalog_errors")
+	if err != nil {
+		return 404
+	}
+
+	if globalCatalogError, ok := globalCatalogErrors[code]; ok && globalCatalogError != "" {
+		if respMap, ok := globalCatalogError.(map[string]interface{}); ok && respMap != nil {
+			if msg, ok := respMap["http_status_code"].(string); ok && msg != "" {
+				httpStatusCode, err := strconv.Atoi(msg)
+				if err == nil {
+					return httpStatusCode
+				}
+			}
+		}
+	}
+
+	return 404
 }
