@@ -8,6 +8,21 @@ import (
 	"strconv"
 )
 
+func GetErrorDataByCode(code string) (bool, map[string]interface{}) {
+	globalCatalogErrors, err := redis.GetUniversalCacheTyped[map[string]interface{}](redis.Rdb, "global_catalog_errors")
+	if err != nil {
+		return false, nil
+	}
+
+	if globalCatalogError, ok := globalCatalogErrors[code]; ok && globalCatalogError != "" {
+		if respMap, ok := globalCatalogError.(map[string]interface{}); ok && respMap != nil {
+			return true, respMap
+		}
+	}
+
+	return false, nil
+}
+
 func GenerateErrorMessage(code string, detalle string) error {
 	functionName := "unknown"
 	line := 0
