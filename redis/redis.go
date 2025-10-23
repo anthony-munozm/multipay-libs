@@ -156,6 +156,34 @@ func GetSetting(rdb *redis.Client, microservice string, settingKey string, setti
   return nil
 }
 
+func GetSettingEntersByKey(rdb *redis.Client, microservice string, settingKey string, settingsVersion string, entersKey []string) interface{} {
+  setting := GetSetting(rdb, microservice, settingKey, settingsVersion)
+  if setting == nil {
+    return nil
+  }
+  
+  settingMap, ok := setting.(map[string]interface{})
+  if !ok {
+    return nil
+  }
+  
+  current := settingMap
+  for _, key := range entersKey {
+    currentValue, exists := current[key]
+    if !exists {
+      return nil
+    }
+    
+    if currentMap, ok := currentValue.(map[string]interface{}); ok {
+      current = currentMap
+    } else {
+      return currentValue
+    }
+  }
+  
+  return nil
+}
+
 func UpdateSettingsList(rdb *redis.Client, microservice string, ttl time.Duration) { 
   settings := bridge.NewMicroserviceClient().CallAdminCore("GET", "/settings", nil, nil)
   if settingsMap, ok := settings.(map[string]interface{}); ok {
