@@ -84,6 +84,8 @@ func GetUniversalCacheTyped[T any](rdb *redis.Client, key string) (T, error) {
 func GetCacheByMicroservice(rdb *redis.Client, microservice string) []byte {
   key := fmt.Sprintf("config:%s", microservice)
 
+  log.Println("key", key)
+
   val, err := rdb.Get(context.Background(), key).Result()
   if err != nil {
       if err == redis.Nil {
