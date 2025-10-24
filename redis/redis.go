@@ -183,7 +183,7 @@ func GetSettingEntersByKey(rdb *redis.Client, microservice string, settingKey st
     }
   }
   
-  return nil
+  return current
 }
 
 func UpdateSettingsList(rdb *redis.Client, microservice string, ttl time.Duration) { 
