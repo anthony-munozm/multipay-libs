@@ -30,7 +30,7 @@ func ModelToDict(fieldName string, idValue string, originalValue interface{}, he
 	case "tenant_id":
 		return GetDataFromCallBridge(bridge.MicroserviceC.CallAdminCore("GET", fmt.Sprintf("/tenants/%s", idValue), nil, headers), originalValue)
 	case "to_account_id", "from_account_id":
-		return GetDataFromCallBridge(bridge.MicroserviceC.CallAccountingCore("GET", fmt.Sprintf("/accounts/%s", idValue), nil, headers), originalValue)
+		return GetDataFromCallBridge(bridge.MicroserviceC.CallAccountingCore("GET", fmt.Sprintf("/%s", idValue), nil, headers), originalValue)
 	case "payment_method_id":
 		return GetDataFromCallBridge(bridge.MicroserviceC.CallTransactionCore("GET", fmt.Sprintf("/payment-methods/%s", idValue), nil, headers), originalValue)
 	default:
