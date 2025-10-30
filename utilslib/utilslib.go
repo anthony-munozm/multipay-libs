@@ -1,4 +1,4 @@
-package utils
+package utilslib
 
 import (
 	"github.com/anthony-munozm/multipay-libs/redis"
