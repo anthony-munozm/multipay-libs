@@ -11,7 +11,7 @@ func GetDataFromCallBridge(data interface{}, originalValue interface{}) interfac
 	if !ok {
 		return originalValue
 	}
-	responseIface, ok := respMap["response"]
+	responseIface, ok := respMap["data"]
 	if !ok {
 		return originalValue
 	}

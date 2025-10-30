@@ -191,7 +191,7 @@ func UpdateSettingsList(rdb *redis.Client, microservice string, ttl time.Duratio
   if settingsMap, ok := settings.(map[string]interface{}); ok {
     if success, exists := settingsMap["success"]; exists && success == true {
       key := fmt.Sprintf("config:%s", microservice)
-      jsonData, err := json.Marshal(settingsMap["response"])
+      jsonData, err := json.Marshal(settingsMap["data"])
       if err != nil {
         log.Println("Error creando lista", err)
       }

@@ -98,15 +98,15 @@ func GetIdentificationSchemaService(c echo.Context, issuer, countryCode string) 
 		return nil, fmt.Errorf("issuer-core devolvió error: %s", errorMsg)
 	}
 
-	// Type assertion de response
-	responseIface, ok := respMap["response"]
+	// Type assertion de data
+	responseIface, ok := respMap["data"]
 	if !ok {
-		return nil, fmt.Errorf("formato inesperado: no hay 'response' en issuer-core")
+		return nil, fmt.Errorf("formato inesperado: no hay 'data' en issuer-core")
 	}
 
 	responseObj, ok := responseIface.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("formato inesperado: 'response' no es un objeto")
+		return nil, fmt.Errorf("formato inesperado: 'data' no es un objeto")
 	}
 
 	schema, ok := responseObj["identification_schema"]
@@ -134,9 +134,9 @@ func GetContactSchemaService(c echo.Context, issuer, countryCode string) (interf
 
 	resp := bridge.MicroserviceC.CallIssuerCore("GET", path, nil, headers)
 	if c != nil {
-		logger.LogInfo("GetContactSchema Raw response from issuer-core: ", c.Request())
+		logger.LogInfo("GetContactSchema Raw data from issuer-core: ", c.Request())
 	}
-	log.Printf("Raw response from issuer-core: %+v\n", resp)
+	log.Printf("Raw data from issuer-core: %+v\n", resp)
 
 	respMap, ok := resp.(map[string]interface{})
 	if !ok {
@@ -155,15 +155,15 @@ func GetContactSchemaService(c echo.Context, issuer, countryCode string) (interf
 		return nil, fmt.Errorf("issuer-core devolvió error: %s", errorMsg)
 	}
 
-	// Type assertion de response
-	responseIface, ok := respMap["response"]
+	// Type assertion de data
+	responseIface, ok := respMap["data"]
 	if !ok {
-		return nil, fmt.Errorf("formato inesperado: no hay 'response' en issuer-core")
+		return nil, fmt.Errorf("formato inesperado: no hay 'data' en issuer-core")
 	}
 
 	responseObj, ok := responseIface.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("formato inesperado: 'response' no es un objeto")
+		return nil, fmt.Errorf("formato inesperado: 'data' no es un objeto")
 	}
 
 	schema, ok := responseObj["contact_schema"]
