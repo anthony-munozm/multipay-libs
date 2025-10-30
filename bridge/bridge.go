@@ -119,7 +119,10 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 		}
 		log.Println("CallMicroservice ID0011")
 		log.Println("respBody", string(respBody))
-		log.Println("resp.StatusCode", resp)
+		log.Println("resp", resp)
+		log.Println("resp.Header", resp.Header)
+		log.Println("resp.StatusCode", resp.StatusCode)
+
 		return &Response{
 			StatusCode: resp.StatusCode,
 			Body:       respBody,
