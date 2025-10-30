@@ -66,7 +66,6 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 			}
 			body = bytes.NewBuffer(jsonBody)
 		}
-		log.Println("CallMicroservice ID0005")
 
 		req, err := http.NewRequest(options.Method, fullURL, body)
 		if err != nil {
@@ -75,7 +74,6 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 				Error:      fmt.Errorf("error creating request: %w", err),
 			}
 		}
-		log.Println("CallMicroservice ID0006")
 
 		if req.Header.Get("Content-Type") == "" {
 			req.Header.Set("Content-Type", "application/json")
@@ -83,7 +81,6 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 		if req.Header.Get("Accept") == "" {
 			req.Header.Set("Accept", "application/json")
 		}
-		log.Println("CallMicroservice ID0007")
 
 		if options.Headers != nil {
 			for key, values := range options.Headers {
@@ -95,11 +92,11 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 				}
 			}
 		}
-		log.Println("CallMicroservice ID0008")
+
 		if options.Timeout > 0 {
 			mc.HTTPClient.Timeout = options.Timeout
 		}
-		log.Println("CallMicroservice ID0009")
+
 		resp, err := mc.HTTPClient.Do(req)
 		if err != nil {
 			return &Response{
@@ -107,7 +104,6 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 				Error:      fmt.Errorf("error making request: %w", err),
 			}
 		}
-		log.Println("CallMicroservice ID0010")
 		defer resp.Body.Close()
 
 		respBody, err := io.ReadAll(resp.Body)
@@ -117,11 +113,6 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 				Error:      fmt.Errorf("error reading response body: %w", err),
 			}
 		}
-		log.Println("CallMicroservice ID0011")
-		log.Println("respBody", string(respBody))
-		log.Println("resp", resp)
-		log.Println("resp.Header", resp.Header)
-		log.Println("resp.StatusCode", resp.StatusCode)
 
 		return &Response{
 			StatusCode: resp.StatusCode,
