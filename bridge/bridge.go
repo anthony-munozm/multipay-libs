@@ -54,10 +54,12 @@ func NewMicroserviceClient() *MicroserviceClient {
 func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface{} {
 	response := func() *Response {
 		fullURL := fmt.Sprintf("%s%s", mc.BaseURL, options.Path)
-		log.Println("ID0004")
+		log.Println("CALLMICROSERVICE- ID0001 - fullURL: ", fullURL)
 		var body io.Reader
+		log.Println("CALLMICROSERVICE- ID0002 - body: ", body)
 		if options.Body != nil {
 			jsonBody, err := json.Marshal(options.Body)
+			log.Println("CALLMICROSERVICE- ID0003 - jsonBody: ", jsonBody)
 			if err != nil {
 				return &Response{
 					StatusCode: 0,
@@ -65,6 +67,7 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 				}
 			}
 			body = bytes.NewBuffer(jsonBody)
+			log.Println("CALLMICROSERVICE- ID0004 - body: ", body)
 		}
 
 		req, err := http.NewRequest(options.Method, fullURL, body)
@@ -75,12 +78,16 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 			}
 		}
 
+		log.Println("CALLMICROSERVICE- ID0005 - req: ", req)
+
 		if req.Header.Get("Content-Type") == "" {
 			req.Header.Set("Content-Type", "application/json")
 		}
 		if req.Header.Get("Accept") == "" {
 			req.Header.Set("Accept", "application/json")
 		}
+
+		log.Println("CALLMICROSERVICE- ID0006 - req.Header: ", req.Header)
 
 		if options.Headers != nil {
 			for key, values := range options.Headers {
@@ -92,6 +99,8 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 				}
 			}
 		}
+
+		log.Println("CALLMICROSERVICE- ID0007 - req.Header: ", req.Header)
 
 		if options.Timeout > 0 {
 			mc.HTTPClient.Timeout = options.Timeout
@@ -107,12 +116,15 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 		defer resp.Body.Close()
 
 		respBody, err := io.ReadAll(resp.Body)
+		log.Println("CALLMICROSERVICE- ID0008 - respBody: ", respBody)
 		if err != nil {
 			return &Response{
 				StatusCode: resp.StatusCode,
 				Error:      fmt.Errorf("error reading response body: %w", err),
 			}
 		}
+
+		log.Println("CALLMICROSERVICE- ID0009 - response: ", response)
 
 		return &Response{
 			StatusCode: resp.StatusCode,
@@ -122,9 +134,13 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 		}
 	}()
 
+	log.Println("CALLMICROSERVICE- ID0010 - responseObj: ", responseObj)
+
 	var responseObj interface{}
 	if response != nil && response.Error == nil {
+		log.Println("CALLMICROSERVICE- ID0011 - response.Body != nil")
 		if response.Body != nil {
+			log.Println("CALLMICROSERVICE- ID0012 - response.Body != nil")
 			if bodyBytes, ok := response.Body.([]byte); ok {
 				if err := json.Unmarshal(bodyBytes, &responseObj); err != nil {
 					responseObj = string(bodyBytes)
@@ -139,14 +155,18 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 			}
 		}
 	} else if response != nil && response.Error != nil {
+		log.Println("CALLMICROSERVICE- ID0013 - response.Error != nil")
 		responseObj = map[string]interface{}{
 			"error": response.Error.Error(),
 		}
 	} else {
+		log.Println("CALLMICROSERVICE- ID0014 - response.Error == nil")
 		responseObj = map[string]interface{}{
 			"error": "No response from microservice",
 		}
 	}
+
+	log.Println("CALLMICROSERVICE- ID0015 - responseObj: ", responseObj)
 
 	return responseObj
 }
