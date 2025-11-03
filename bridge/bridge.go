@@ -124,7 +124,7 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 			}
 		}
 
-		log.Println("CALLMICROSERVICE- ID0009 - response: ", response)
+		log.Println("CALLMICROSERVICE- ID0009")
 
 		return &Response{
 			StatusCode: resp.StatusCode,
@@ -134,7 +134,7 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 		}
 	}()
 
-	log.Println("CALLMICROSERVICE- ID0010 - responseObj: ", responseObj)
+	log.Println("CALLMICROSERVICE- ID0010")
 
 	var responseObj interface{}
 	if response != nil && response.Error == nil {
