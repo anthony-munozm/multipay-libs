@@ -94,7 +94,13 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 				for _, value := range values {
 					log.Println(key)
 					if key != "Idempotency-Key" {
-						req.Header.Add(key, value)
+						// Use Set() for headers that should only have one value
+						// Use Add() for headers that can have multiple values
+						if key == "Content-Type" || key == "Accept" {
+							req.Header.Set(key, value)
+						} else {
+							req.Header.Add(key, value)
+						}
 					}
 				}
 			}
