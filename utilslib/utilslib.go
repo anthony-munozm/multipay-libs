@@ -5,7 +5,6 @@ import (
 	"github.com/anthony-munozm/multipay-libs/errormap"
 	"log"
 	"strings"
-	"errors"
 	"strconv"
 	"math"
 )
@@ -47,20 +46,20 @@ func GetDecimalsFromCurrency(currency string) (int, error, string) {
 
 func NormalizeAmount(amount string, decimals int) (string, error) {
 	if strings.HasSuffix(amount, ".") {
-		return "", errors.New("INVALID_AMOUNT_FORMAT")
+		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount ends with a dot")
 	}
 
 	if strings.Count(amount, ".") > 1 {
-		return "", errors.New("INVALID_AMOUNT_FORMAT")
+		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount contains multiple dots")
 	}
 
 	value, err := strconv.ParseFloat(amount, 64)
 	if err != nil {
-		return "", errors.New("INVALID_AMOUNT_FORMAT")
+		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
 	}
 
 	if value <= 0 {
-		return "", errors.New("INVALID_AMOUNT")
+		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT", "amount is less than or equal to 0")
 	}
 
 	integerValue := int64(value * math.Pow10(decimals))
@@ -71,10 +70,32 @@ func NormalizeAmount(amount string, decimals int) (string, error) {
 func NormalizeAmountReverse(amount string, decimals int) (string, error) {
 	value, err := strconv.ParseFloat(amount, 64)
 	if err != nil {
-		return "", errors.New("INVALID_AMOUNT_FORMAT")
+		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
 	}
 
 	integerValue := float64(value / math.Pow10(decimals))
 	
 	return strconv.FormatFloat(integerValue, 'f', decimals, 64), nil
+}
+
+func NormalizeTruncateAmountReverseFromCurrency(amount string, currency string, decimalsTruncate int) (string, error) {
+	value, err := strconv.ParseFloat(amount, 64)
+	if err != nil {
+		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
+	}
+
+	decimals, err, errorCode := GetDecimalsFromCurrency(currency)
+	if err != nil {
+		return "", errormap.GenerateErrorMessage(errorCode, err.Error())
+	}
+
+	integerValue := float64(value / math.Pow10(decimals))
+	
+	if decimalsTruncate > 0 {
+		decimalsTruncate = 2
+	}
+
+	integerValue = math.Trunc(integerValue * math.Pow10(decimalsTruncate)) / math.Pow10(decimalsTruncate)
+
+	return strconv.FormatFloat(integerValue, 'f', decimalsTruncate, 64), nil
 }
