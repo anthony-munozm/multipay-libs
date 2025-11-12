@@ -62,6 +62,11 @@ func NormalizeAmount(amount string, decimals int) (string, string, error) {
 	}
 
 	integerValue := int64(value * math.Pow10(decimals))
+
+	log.Println("NormalizeAmount value", value)
+	log.Println("NormalizeAmount integerValue", integerValue)
+	log.Println("NormalizeAmount value", strconv.FormatInt(integerValue, 10))
+	log.Println("NormalizeAmount decimals", strconv.FormatFloat(value, 'f', decimals, 64))
 	
 	return strconv.FormatInt(integerValue, 10), strconv.FormatFloat(value, 'f', decimals, 64), nil
 }
