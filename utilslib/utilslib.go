@@ -43,28 +43,27 @@ func GetDecimalsFromCurrency(currency string) (int, error, string) {
     return decimals, nil, ""
 }
 
-
-func NormalizeAmount(amount string, decimals int) (string, error) {
+func NormalizeAmount(amount string, decimals int) (string, string, error) {
 	if strings.HasSuffix(amount, ".") {
-		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount ends with a dot")
+		return "", "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount ends with a dot")
 	}
 
 	if strings.Count(amount, ".") > 1 {
-		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount contains multiple dots")
+		return "", "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount contains multiple dots")
 	}
 
 	value, err := strconv.ParseFloat(amount, 64)
 	if err != nil {
-		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
+		return "", "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
 	}
 
 	if value <= 0 {
-		return "", errormap.GenerateErrorMessage("INVALID_AMOUNT", "amount is less than or equal to 0")
+		return "", "", errormap.GenerateErrorMessage("INVALID_AMOUNT", "amount is less than or equal to 0")
 	}
 
 	integerValue := int64(value * math.Pow10(decimals))
 	
-	return strconv.FormatInt(integerValue, 10), nil
+	return strconv.FormatInt(integerValue, 10), strconv.FormatFloat(value, 'f', decimals, 64), nil
 }
 
 func NormalizeAmountReverse(amount string, decimals int) (string, error) {
