@@ -52,6 +52,7 @@ func NormalizeAmount(amount string, decimals int) (string, string, error) {
 		return "", "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount contains multiple dots")
 	}
 
+	// Validar que es un número válido
 	value, err := strconv.ParseFloat(amount, 64)
 	if err != nil {
 		return "", "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
@@ -61,14 +62,17 @@ func NormalizeAmount(amount string, decimals int) (string, string, error) {
 		return "", "", errormap.GenerateErrorMessage("INVALID_AMOUNT", "amount is less than or equal to 0")
 	}
 
-	integerValue := int64(value * math.Pow10(decimals))
+	// Normalizar el string al formato con los decimales especificados
+	normalizedString := strconv.FormatFloat(value, 'f', decimals, 64)
+	
+	// Eliminar el punto decimal del string normalizado
+	integerString := strings.ReplaceAll(normalizedString, ".", "")
 
 	log.Println("NormalizeAmount value", value)
-	log.Println("NormalizeAmount integerValue", integerValue)
-	log.Println("NormalizeAmount value", strconv.FormatInt(integerValue, 10))
-	log.Println("NormalizeAmount decimals", strconv.FormatFloat(value, 'f', decimals, 64))
+	log.Println("NormalizeAmount integerValue", integerString)
+	log.Println("NormalizeAmount normalizedString", normalizedString)
 	
-	return strconv.FormatInt(integerValue, 10), strconv.FormatFloat(value, 'f', decimals, 64), nil
+	return integerString, normalizedString, nil
 }
 
 func NormalizeAmountReverse(amount string, decimals int) (string, error) {
