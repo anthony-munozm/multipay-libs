@@ -43,40 +43,42 @@ func GetDecimalsFromCurrency(currency string) (int, error, string) {
     return decimals, nil, ""
 }
 
-func NormalizeAmount(amount string, decimals int) (int64, string, error) {
+func NormalizeAmount(amount string, decimals int) (int64, float64, error) {
 	if strings.HasSuffix(amount, ".") {
-		return 0, "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount ends with a dot")
+		return 0, 0, errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount ends with a dot")
 	}
 
 	if strings.Count(amount, ".") > 1 {
-		return 0, "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount contains multiple dots")
+		return 0, 0, errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", "amount contains multiple dots")
 	}
 
 	// Validar que es un número válido
 	value, err := strconv.ParseFloat(amount, 64)
 	if err != nil {
-		return 0, "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
+		return 0, 0, errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
 	}
 
 	if value <= 0 {
-		return 0, "", errormap.GenerateErrorMessage("INVALID_AMOUNT", "amount is less than or equal to 0")
+		return 0, 0, errormap.GenerateErrorMessage("INVALID_AMOUNT", "amount is less than or equal to 0")
 	}
 
 	// Normalizar el string al formato con los decimales especificados
 	normalizedString := strconv.FormatFloat(value, 'f', decimals, 64)
+
+	normalizedFloatValue := float64(value / math.Pow10(decimals))
 		
 	// Eliminar el punto decimal del string normalizado
 	integerString := strings.ReplaceAll(normalizedString, ".", "")
 	integerValue, err := strconv.ParseInt(integerString, 10, 64)
 	if err != nil {
-		return 0, "", errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
+		return 0, 0, errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
 	}
 
 	log.Println("NormalizeAmount value", value)
 	log.Println("NormalizeAmount integerValue", integerString)
 	log.Println("NormalizeAmount normalizedString", normalizedString)
 	
-	return integerValue, normalizedString, nil
+	return integerValue, normalizedFloatValue, nil
 }
 
 func NormalizeAmountReverse(amount string, decimals int) (string, error) {
