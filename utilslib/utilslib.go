@@ -64,8 +64,10 @@ func NormalizeAmount(amount string, decimals int) (int64, float64, error) {
 
 	// Normalizar el string al formato con los decimales especificados
 	normalizedString := strconv.FormatFloat(value, 'f', decimals, 64)
-
-	normalizedFloatValue := float64(value / math.Pow10(decimals))
+	normalizedFloat, err := strconv.ParseFloat(normalizedString, 64)
+	if err != nil {
+		return 0, 0, errormap.GenerateErrorMessage("INVALID_AMOUNT_FORMAT", err.Error())
+	}
 		
 	// Eliminar el punto decimal del string normalizado
 	integerString := strings.ReplaceAll(normalizedString, ".", "")
@@ -78,7 +80,7 @@ func NormalizeAmount(amount string, decimals int) (int64, float64, error) {
 	log.Println("NormalizeAmount integerValue", integerString)
 	log.Println("NormalizeAmount normalizedString", normalizedString)
 	
-	return integerValue, normalizedFloatValue, nil
+	return integerValue, normalizedFloat, nil
 }
 
 func NormalizeAmountReverse(amount string, decimals int) (string, error) {
