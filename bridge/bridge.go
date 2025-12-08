@@ -42,7 +42,7 @@ func NewMicroserviceClient() *MicroserviceClient {
 	MicroserviceC = &MicroserviceClient{
 		BaseURL: baseURL,
 		HTTPClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 120 * time.Second,
 		},
 	}
 	return MicroserviceC
