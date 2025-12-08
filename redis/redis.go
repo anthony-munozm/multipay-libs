@@ -84,6 +84,8 @@ func GetUniversalCacheTyped[T any](rdb *redis.Client, key string) (T, error) {
 func GetCacheByMicroservice(rdb *redis.Client, microservice string) []byte {
   key := fmt.Sprintf("config:%s", microservice)
 
+  log.Println("key", key)
+
   val, err := rdb.Get(context.Background(), key).Result()
   if err != nil {
       if err == redis.Nil {
@@ -156,12 +158,40 @@ func GetSetting(rdb *redis.Client, microservice string, settingKey string, setti
   return nil
 }
 
+func GetSettingEntersByKey(rdb *redis.Client, microservice string, settingKey string, settingsVersion string, entersKey []string) interface{} {
+  setting := GetSetting(rdb, microservice, settingKey, settingsVersion)
+  if setting == nil {
+    return nil
+  }
+  
+  settingMap, ok := setting.(map[string]interface{})
+  if !ok {
+    return nil
+  }
+  
+  current := settingMap
+  for _, key := range entersKey {
+    currentValue, exists := current[key]
+    if !exists {
+      return nil
+    }
+    
+    if currentMap, ok := currentValue.(map[string]interface{}); ok {
+      current = currentMap
+    } else {
+      return currentValue
+    }
+  }
+  
+  return current
+}
+
 func UpdateSettingsList(rdb *redis.Client, microservice string, ttl time.Duration) { 
   settings := bridge.NewMicroserviceClient().CallAdminCore("GET", "/settings", nil, nil)
   if settingsMap, ok := settings.(map[string]interface{}); ok {
     if success, exists := settingsMap["success"]; exists && success == true {
       key := fmt.Sprintf("config:%s", microservice)
-      jsonData, err := json.Marshal(settingsMap["response"])
+      jsonData, err := json.Marshal(settingsMap["data"])
       if err != nil {
         log.Println("Error creando lista", err)
       }
