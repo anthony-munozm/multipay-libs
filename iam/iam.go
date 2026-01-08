@@ -387,6 +387,8 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// Construir IAMContext
 		iamCtx := buildIAMContext(claims)
 
+		logger.LogInfo("URL Path: " + c.Request().URL.Path, c.Request())
+
 		excludeJWTPaths := []string{
 			"/api/transaction/healthz",
 		}
