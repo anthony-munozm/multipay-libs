@@ -441,7 +441,7 @@ func RequireScope(scope string) echo.MiddlewareFunc {
 			iamCtx, err := GetIAMContext(c)
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN", err.Error()),
+					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN_SCOPE", err.Error()),
 					"code":    "IAM_INVALID_TOKEN",
 				})
 			}
@@ -544,42 +544,4 @@ func logAuthorizationDenied(c echo.Context, reason, details string) {
 
 	logger.LogInfo(fmt.Sprintf("Authorization denied - %s: %s | SubjectKind: %s | UserType: %s | Roles: %v | Scopes: %v | TenantID: %s | CountryCode: %s | Endpoint: %s %s",
 		reason, details, iamCtx.SubjectKind, iamCtx.UserType, iamCtx.Roles, iamCtx.Scopes, iamCtx.TenantID, iamCtx.CountryCode, c.Request().Method, c.Request().URL.Path), c.Request())
-}
-
-// ValidateTenantContext valida que el tenant_id y country_code del request coincidan con el contexto del usuario
-// Retorna error si el usuario es tenant_admin y está intentando operar fuera de su contexto
-func ValidateTenantContext(c echo.Context, requestTenantID, requestCountryCode string) error {
-	iamCtx, err := GetIAMContext(c)
-	if err != nil {
-		return err
-	}
-
-	// Platform admin puede operar en cualquier contexto
-	if iamCtx.HasRole("ROLE_PLATFORM_ADMIN") {
-		return nil
-	}
-
-	// Tenant admin solo puede operar dentro de su contexto
-	if iamCtx.HasRole("ROLE_TENANT_ADMIN") && !iamCtx.HasRole("ROLE_PLATFORM_ADMIN") {
-		if requestTenantID != "" && requestTenantID != iamCtx.TenantID {
-			logAuthorizationDenied(c, "CANNOT_OPERATE_OUTSIDE_TENANT_CONTEXT", fmt.Sprintf("Request tenant_id: %s, User tenant_id: %s", requestTenantID, iamCtx.TenantID))
-			return fmt.Errorf("cannot operate outside tenant context")
-		}
-
-		if requestCountryCode != "" && requestCountryCode != iamCtx.CountryCode {
-			logAuthorizationDenied(c, "CANNOT_OPERATE_OUTSIDE_COUNTRY_CONTEXT", fmt.Sprintf("Request country_code: %s, User country_code: %s", requestCountryCode, iamCtx.CountryCode))
-			return fmt.Errorf("cannot operate outside country context")
-		}
-	}
-
-	return nil
-}
-
-// ForbiddenResponse retorna una respuesta 403 estandarizada
-func ForbiddenResponse(c echo.Context, code, message string) error {
-	logAuthorizationDenied(c, code, message)
-	return c.JSON(http.StatusForbidden, map[string]interface{}{
-		"message": errormap.GenerateErrorMessage(code, message),
-		"code":    code,
-	})
 }
