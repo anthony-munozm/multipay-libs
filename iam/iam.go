@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"slices"
@@ -387,7 +388,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// Construir IAMContext
 		iamCtx := buildIAMContext(claims)
 
-		logger.LogInfo("URL Path: " + c.Request().URL.Path, c.Request())
+		log.Printf("c.Request().URL.Path: %s", c.Request().URL.Path)
 
 		excludeJWTPaths := []string{
 			"/api/transaction/healthz",
