@@ -358,6 +358,8 @@ func reissueJWTWithIdempotencyKey(originalClaims *IAMClaims, idempotencyKey stri
 func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
+		logger.LogInfo(fmt.Sprintf("URL Path: %s", c.Request().URL.Path), c.Request())
+
 		excludeJWTPaths := []string{
 			"/api/transaction/healthz",
 		}
