@@ -361,6 +361,10 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		logger.LogInfo(fmt.Sprintf("URL Path: %s", c.Request().URL.Path), c.Request())
 
 		excludeJWTPaths := []string{
+			"/api/accounting/healthz",
+			"/api/admin/healthz",
+			"/api/customer/healthz",
+			"/api/issuer/healthz",
 			"/api/transaction/healthz",
 		}
 
