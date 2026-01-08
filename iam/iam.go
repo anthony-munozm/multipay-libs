@@ -415,6 +415,11 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 				validateJWT = false
 			}
 
+			logger.LogInfo(fmt.Sprintf("validateJWT: %v", validateJWT), c.Request())
+			logger.LogInfo(fmt.Sprintf("jwtRequired: %v", jwtRequired), c.Request())
+			logger.LogInfo(fmt.Sprintf("currentIdempotencyKey: %s", currentIdempotencyKey), c.Request())
+			logger.LogInfo(fmt.Sprintf("claims.IdempotencyKey: %s", claims.IdempotencyKey), c.Request())
+
 			if validateJWT && jwtRequired {
 
 				// Validar campos mínimos
