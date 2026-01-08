@@ -366,7 +366,9 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		iamCtx := &IAMContext{}
 
-		if !slices.Contains(excludeJWTPaths, c.Request().URL.Path) {
+		jwtRequired := GetJWTRequired()
+
+		if !slices.Contains(excludeJWTPaths, c.Request().URL.Path) && jwtRequired {
 
 			currentIdempotencyKey := c.Request().Header.Get("Idempotency-Key")
 
@@ -396,8 +398,6 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 			// Construir IAMContext
 			iamCtx = buildIAMContext(claims)
-		
-			jwtRequired := GetJWTRequired()
 
 			if claims.IdempotencyKey == "" || currentIdempotencyKey != claims.IdempotencyKey {
 				newToken, err := reissueJWTWithIdempotencyKey(claims, currentIdempotencyKey)
@@ -420,7 +420,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			logger.LogInfo(fmt.Sprintf("currentIdempotencyKey: %s", currentIdempotencyKey), c.Request())
 			logger.LogInfo(fmt.Sprintf("claims.IdempotencyKey: %s", claims.IdempotencyKey), c.Request())
 
-			if validateJWT && jwtRequired {
+			if validateJWT {
 
 				// Validar campos mínimos
 				if err := validateIAMContext(iamCtx); err != nil {
