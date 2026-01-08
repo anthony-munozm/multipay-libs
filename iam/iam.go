@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"slices"
@@ -359,42 +358,42 @@ func reissueJWTWithIdempotencyKey(originalClaims *IAMClaims, idempotencyKey stri
 func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
-		currentIdempotencyKey := c.Request().Header.Get("Idempotency-Key")
-
-		// Extraer y validar claims del JWT
-		claims, err := extractIAMClaimsFromRequest(c)
-		if err != nil {
-			logger.LogInfo(fmt.Sprintf("IAM auth failed: %v", err), c.Request())
-
-			// Determinar código de error específico basado en el mensaje
-			errorCode := "IAM_INVALID_TOKEN"
-			errorMsg := err.Error()
-			if strings.Contains(errorMsg, "IAM_INVALID_ISSUER") {
-				errorCode = "IAM_INVALID_ISSUER"
-				errorMsg = strings.TrimPrefix(errorMsg, "IAM_INVALID_ISSUER: ")
-			} else if strings.Contains(errorMsg, "IAM_INVALID_AUDIENCE") {
-				errorCode = "IAM_INVALID_AUDIENCE"
-				errorMsg = strings.TrimPrefix(errorMsg, "IAM_INVALID_AUDIENCE: ")
-			}
-
-			return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-				"message": errormap.GenerateErrorMessage(errorCode, errorMsg),
-				"code":    errorCode,
-			})
-		}
-
-		var validateJWT = true
-
-		// Construir IAMContext
-		iamCtx := buildIAMContext(claims)
-
-		log.Printf("c.Request().URL.Path: %s", c.Request().URL.Path)
-
 		excludeJWTPaths := []string{
 			"/api/transaction/healthz",
 		}
 
+		iamCtx := &IAMContext{}
+
 		if slices.Contains(excludeJWTPaths, c.Request().URL.Path) {
+
+			currentIdempotencyKey := c.Request().Header.Get("Idempotency-Key")
+
+			// Extraer y validar claims del JWT
+			claims, err := extractIAMClaimsFromRequest(c)
+			if err != nil {
+				logger.LogInfo(fmt.Sprintf("IAM auth failed: %v", err), c.Request())
+
+				// Determinar código de error específico basado en el mensaje
+				errorCode := "IAM_INVALID_TOKEN"
+				errorMsg := err.Error()
+				if strings.Contains(errorMsg, "IAM_INVALID_ISSUER") {
+					errorCode = "IAM_INVALID_ISSUER"
+					errorMsg = strings.TrimPrefix(errorMsg, "IAM_INVALID_ISSUER: ")
+				} else if strings.Contains(errorMsg, "IAM_INVALID_AUDIENCE") {
+					errorCode = "IAM_INVALID_AUDIENCE"
+					errorMsg = strings.TrimPrefix(errorMsg, "IAM_INVALID_AUDIENCE: ")
+				}
+
+				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+					"message": errormap.GenerateErrorMessage(errorCode, errorMsg),
+					"code":    errorCode,
+				})
+			}
+
+			var validateJWT = true
+
+			// Construir IAMContext
+			iamCtx = buildIAMContext(claims)
 		
 			jwtRequired := GetJWTRequired()
 
