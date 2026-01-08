@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"slices"
 	"time"
 	"github.com/anthony-munozm/multipay-libs/errormap"
 	"github.com/anthony-munozm/multipay-libs/logger"
@@ -382,37 +383,45 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		var validateJWT = true
-		
-		jwtRequired := GetJWTRequired()
-
-		if claims.IdempotencyKey == "" || currentIdempotencyKey != claims.IdempotencyKey {
-			newToken, err := reissueJWTWithIdempotencyKey(claims, currentIdempotencyKey)
-			if err != nil {
-				logger.LogInfo(fmt.Sprintf("Failed to re-issue JWT with idempotency key: %v", err), c.Request())
-				return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-					"message": errormap.GenerateErrorMessage("IAM_JWT_ISSUE_ERROR", err.Error()),
-					"code":    "IAM_JWT_ISSUE_ERROR",
-				})
-			}
-			c.Request().Header.Set("Authorization", "Bearer "+newToken)
-			claims.IdempotencyKey = currentIdempotencyKey
-			c.Request().Header.Set("Idempotency-Key", currentIdempotencyKey)
-		} else if currentIdempotencyKey == claims.IdempotencyKey {
-			validateJWT = false
-		}
 
 		// Construir IAMContext
 		iamCtx := buildIAMContext(claims)
 
-		if validateJWT && jwtRequired {
+		excludeJWTPaths := []string{
+			"/api/transaction/healthz",
+		}
 
-			// Validar campos mínimos
-			if err := validateIAMContext(iamCtx); err != nil {
-				logger.LogInfo(fmt.Sprintf("IAM context validation failed: %v", err), c.Request())
-				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN", err.Error()),
-					"code":    "IAM_INVALID_TOKEN",
-				})
+		if slices.Contains(excludeJWTPaths, c.Request().URL.Path) {
+		
+			jwtRequired := GetJWTRequired()
+
+			if claims.IdempotencyKey == "" || currentIdempotencyKey != claims.IdempotencyKey {
+				newToken, err := reissueJWTWithIdempotencyKey(claims, currentIdempotencyKey)
+				if err != nil {
+					logger.LogInfo(fmt.Sprintf("Failed to re-issue JWT with idempotency key: %v", err), c.Request())
+					return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+						"message": errormap.GenerateErrorMessage("IAM_JWT_ISSUE_ERROR", err.Error()),
+						"code":    "IAM_JWT_ISSUE_ERROR",
+					})
+				}
+				c.Request().Header.Set("Authorization", "Bearer "+newToken)
+				claims.IdempotencyKey = currentIdempotencyKey
+				c.Request().Header.Set("Idempotency-Key", currentIdempotencyKey)
+			} else if currentIdempotencyKey == claims.IdempotencyKey {
+				validateJWT = false
+			}
+
+			if validateJWT && jwtRequired {
+
+				// Validar campos mínimos
+				if err := validateIAMContext(iamCtx); err != nil {
+					logger.LogInfo(fmt.Sprintf("IAM context validation failed: %v", err), c.Request())
+					return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+						"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN", err.Error()),
+						"code":    "IAM_INVALID_TOKEN",
+					})
+				}
+
 			}
 
 		}
