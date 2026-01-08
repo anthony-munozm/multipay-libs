@@ -366,7 +366,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		iamCtx := &IAMContext{}
 
-		if slices.Contains(excludeJWTPaths, c.Request().URL.Path) {
+		if !slices.Contains(excludeJWTPaths, c.Request().URL.Path) {
 
 			currentIdempotencyKey := c.Request().Header.Get("Idempotency-Key")
 
