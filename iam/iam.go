@@ -135,7 +135,16 @@ func GetJWTRequired() bool {
 	if required == "" {
 		return true
 	}
-	return required == "true" || required == "1"
+
+	if required == "false" || required == "0" {
+		return false
+	}
+
+	if required == "true" || required == "1" {
+		return true
+	}
+
+	return true
 }
 
 // Context key para IAMContext
