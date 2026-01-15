@@ -452,6 +452,9 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			// Construir IAMContext
 			iamCtx = buildIAMContext(claims)
 
+			// También guardar IAMClaims en el contexto de Echo para compatibilidad
+			c.Set("iam_claims", claims)
+
 			if claims.IdempotencyKey == "" || currentIdempotencyKey != claims.IdempotencyKey {
 				newToken, err := reissueJWTWithIdempotencyKey(claims, currentIdempotencyKey)
 				if err != nil {
@@ -489,8 +492,10 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		// Agregar IAMContext al contexto de la request
+		fmt.Println("IAM Auth - Setting IAM context in request")
 		ctx := context.WithValue(c.Request().Context(), IAMContextKey, iamCtx)
 		c.SetRequest(c.Request().WithContext(ctx))
+		fmt.Println("IAM Auth - IAMClaims set in Echo context, calling next handler")
 
 		return next(c)
 	}
@@ -1065,6 +1070,7 @@ func RequirePermDB(requiredPerm string) echo.MiddlewareFunc {
 			// Extraer claims IAM del contexto (establecido por IAMAuthMiddleware)
 			claims, ok := c.Get("iam_claims").(*IAMClaims)
 			if !ok || claims == nil {
+				fmt.Println("RequirePermDB - IAM claims not found in Echo context")
 				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 					"success": false,
 					"error": map[string]interface{}{
