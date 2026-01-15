@@ -161,16 +161,25 @@ var IAMContextKey = &iamContextKey{}
 func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" {
+		fmt.Println("IAM Auth - Authorization header missing", "url", c.Request().URL.Path)
 		return nil, fmt.Errorf("authorization header missing")
 	}
 
 	// Extraer el token (Bearer <token>)
 	parts := strings.Split(authHeader, " ")
 	if len(parts) != 2 || parts[0] != "Bearer" {
+		fmt.Println("IAM Auth - Invalid authorization header format", "header", authHeader[:min(50, len(authHeader))]+"...")
 		return nil, fmt.Errorf("invalid authorization header format")
 	}
 
 	tokenString := parts[1]
+
+	// Log del token (primeros 50 caracteres por seguridad)
+	tokenPreview := tokenString
+	if len(tokenString) > 50 {
+		tokenPreview = tokenString[:50] + "..."
+	}
+	fmt.Printf("IAM Auth - Token received: %s\n", tokenPreview)
 
 	// Obtener signing key
 	signingKey := GetIAMJWTSigningKey()
@@ -187,10 +196,12 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	})
 
 	if err != nil {
+		fmt.Println("IAM Auth - Failed to parse token", "error", err.Error())
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
 
 	if !token.Valid {
+		fmt.Println("IAM Auth - Token validation failed")
 		return nil, fmt.Errorf("invalid token")
 	}
 
@@ -200,13 +211,22 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 		return nil, fmt.Errorf("invalid token claims")
 	}
 
+	// Log de todos los claims raw del token
+	fmt.Println("=== JWT CLAIMS RAW ===")
+	for key, value := range claims {
+		fmt.Printf("%s: %v\n", key, value)
+	}
+	fmt.Println("=======================")
+
 	// Validar issuer (iss)
 	expectedIssuer := GetIAMJWTIssuer()
 	if issuer, ok := claims["iss"].(string); ok {
 		if issuer != expectedIssuer {
+			fmt.Println("IAM Auth - Invalid issuer", "expected", expectedIssuer, "got", issuer)
 			return nil, fmt.Errorf("IAM_INVALID_ISSUER: expected %s, got %s", expectedIssuer, issuer)
 		}
 	} else {
+		fmt.Println("IAM Auth - Missing issuer claim")
 		return nil, fmt.Errorf("IAM_INVALID_ISSUER: missing issuer (iss) claim")
 	}
 
@@ -214,6 +234,7 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	expectedAudience := GetIAMJWTAudience()
 	if audience, ok := claims["aud"].(string); ok {
 		if audience != expectedAudience {
+			fmt.Println("IAM Auth - Invalid audience", "expected", expectedAudience, "got", audience)
 			return nil, fmt.Errorf("IAM_INVALID_AUDIENCE: expected %s, got %s", expectedAudience, audience)
 		}
 	} else {
@@ -273,6 +294,20 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	if idempotencyKey, ok := claims["idempotency_key"].(string); ok {
 		iamClaims.IdempotencyKey = idempotencyKey
 	}
+
+	// Log detallado de todos los claims extraídos del token
+	fmt.Println("=== IAM TOKEN CLAIMS EXTRAÍDOS ===")
+	fmt.Printf("Sub: %s\n", iamClaims.Sub)
+	fmt.Printf("SubjectKind: %s\n", iamClaims.SubjectKind)
+	fmt.Printf("UserType: %s\n", iamClaims.UserType)
+	fmt.Printf("CountryCode: %s\n", iamClaims.CountryCode)
+	fmt.Printf("Channel: %s\n", iamClaims.Channel)
+	fmt.Printf("Locale: %s\n", iamClaims.Locale)
+	fmt.Printf("Roles: %v\n", iamClaims.Roles)
+	fmt.Printf("Scopes: %v\n", iamClaims.Scopes)
+	fmt.Printf("TenantID: %v\n", iamClaims.TenantID)
+	fmt.Printf("IdempotencyKey: %s\n", iamClaims.IdempotencyKey)
+	fmt.Println("===================================")
 
 	return iamClaims, nil
 }
@@ -376,6 +411,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		excludeJWTPaths := []string{
 			"/api/accounting/healthz",
 			"/api/admin/healthz",
+			"/api/admin/iam/auth/login",
 			"/api/customer/healthz",
 			"/api/issuer/healthz",
 			"/api/transaction/healthz",
