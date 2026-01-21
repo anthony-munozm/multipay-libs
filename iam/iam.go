@@ -1190,3 +1190,122 @@ func RequireAnyPermDB(requiredPerms ...string) echo.MiddlewareFunc {
 		}
 	}
 }
+
+// ===== USER TYPE VALIDATION WITH CACHE =====
+
+// UserTypeCache representa los tipos de usuario desde cache Redis
+type UserTypeCache struct {
+	UserTypes map[string]struct {
+		Code string `json:"code"`
+	} `json:"user_types"`
+}
+
+// GetUserTypesForUserCreation retorna los tipos de usuario que pueden crear usuarios
+// Si no hay cache disponible, retorna valores por defecto
+func GetUserTypesForUserCreation() []string {
+	// Verificar que Redis esté inicializado
+	if redis.Rdb == nil {
+		// Si Redis no está inicializado, retornar valores por defecto
+		return []string{"platform_admin", "tenant_admin"}
+	}
+
+	// Intentar obtener desde cache
+	cacheKey := "user_types_cache"
+	cachedData, err := redis.GetUniversalCacheTyped[UserTypeCache](redis.Rdb, cacheKey)
+	if err == nil && cachedData.UserTypes != nil {
+		var userTypes []string
+		for code := range cachedData.UserTypes {
+			userTypes = append(userTypes, code)
+		}
+		return userTypes
+	}
+
+	// Fallback a valores por defecto si no hay cache
+	// Solo platform_admin y tenant_admin pueden crear usuarios
+	return []string{"platform_admin", "tenant_admin"}
+}
+
+// RequireUserTypeDB valida que el usuario tenga uno de los tipos permitidos desde cache
+// Similar a RequirePermDB pero para tipos de usuario
+func RequireUserTypeDB() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			// Verificar si JWT es requerido - si no, permitir acceso sin validación
+			if !GetJWTRequired() {
+				return next(c)
+			}
+
+			// Obtener tipos de usuario permitidos desde cache
+			allowedUserTypes := GetUserTypesForUserCreation()
+
+			// Extraer claims IAM del contexto (establecido por IAMAuthMiddleware)
+			claims, ok := c.Get("iam_claims").(*IAMClaims)
+			if !ok || claims == nil {
+				// Si no hay claims en el contexto, intentar obtener del IAMContext
+				iamCtx, err := GetIAMContext(c)
+				if err != nil || iamCtx == nil || iamCtx.UserType == "" {
+					return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+						"success": false,
+						"error": map[string]interface{}{
+							"code":    "AUTHORIZATION_FAILED",
+							"message": "IAM claims not found in context",
+						},
+					})
+				}
+
+				// Validar usando IAMContext
+				userTypeValid := false
+				for _, allowedType := range allowedUserTypes {
+					if iamCtx.UserType == allowedType {
+						userTypeValid = true
+						break
+					}
+				}
+
+				if !userTypeValid {
+					return c.JSON(http.StatusForbidden, map[string]interface{}{
+						"success": false,
+						"error": map[string]interface{}{
+							"code":    "IAM_USER_TYPE_NOT_ALLOWED",
+							"message": "Tipo de usuario no permitido para esta operación",
+						},
+					})
+				}
+
+				return next(c)
+			}
+
+			// Validar usando IAMClaims
+			if claims.UserType == "" {
+				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+					"success": false,
+					"error": map[string]interface{}{
+						"code":    "AUTHORIZATION_FAILED",
+						"message": "User type not found in claims",
+					},
+				})
+			}
+
+			// Validar que el user_type esté en la lista permitida
+			userTypeValid := false
+			for _, allowedType := range allowedUserTypes {
+				if claims.UserType == allowedType {
+					userTypeValid = true
+					break
+				}
+			}
+
+			if !userTypeValid {
+				return c.JSON(http.StatusForbidden, map[string]interface{}{
+					"success": false,
+					"error": map[string]interface{}{
+						"code":    "IAM_USER_TYPE_NOT_ALLOWED",
+						"message": "Tipo de usuario no permitido para esta operación",
+					},
+				})
+			}
+
+			return next(c)
+		}
+	}
+}
