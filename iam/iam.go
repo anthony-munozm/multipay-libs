@@ -415,6 +415,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			"/api/customer/healthz",
 			"/api/issuer/healthz",
 			"/api/transaction/healthz",
+			"/api/admin/settings/redis/build",
 		}
 
 		iamCtx := &IAMContext{}
