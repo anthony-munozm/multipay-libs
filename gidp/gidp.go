@@ -498,10 +498,16 @@ func (c *GIDPClient) SignInWithPassword(email, password string) (*SignInResponse
 }
 
 // GeneratePasswordResetLink genera un link de reset/set password y lo envía por email
-func (c *GIDPClient) GeneratePasswordResetLink(email string) (*PasswordResetLinkResponse, error) {
+// locale es el código de idioma opcional (ej: "es", "en", "fr"). Si está vacío, usa el idioma predeterminado del proyecto.
+func (c *GIDPClient) GeneratePasswordResetLink(email string, locale string) (*PasswordResetLinkResponse, error) {
 	body := map[string]interface{}{
 		"requestType": "PASSWORD_RESET",
 		"email":       email,
+	}
+
+	// Añadir locale si está especificado
+	if locale != "" {
+		body["locale"] = locale
 	}
 
 	responseBody, err := c.makeRequest("POST", "accounts:sendOobCode", body)
