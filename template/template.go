@@ -54,10 +54,15 @@ func LoadTemplate(template_name string, version int) (Template, error) {
 
 // convertEnumToStrings converts a YAML enum array from []interface{} to []string
 func convertEnumToStrings(enum interface{}) []string {
-	enumSlice := enum.([]interface{})
-	enumStrings := make([]string, len(enumSlice))
-	for i, v := range enumSlice {
-		enumStrings[i] = v.(string)
+	enumSlice, ok := enum.([]interface{})
+	if !ok {
+		return nil
+	}
+	enumStrings := make([]string, 0, len(enumSlice))
+	for _, v := range enumSlice {
+		if s, ok := v.(string); ok {
+			enumStrings = append(enumStrings, s)
+		}
 	}
 	return enumStrings
 }
@@ -65,12 +70,20 @@ func convertEnumToStrings(enum interface{}) []string {
 func ValidateList(item map[string]interface{}, tx []map[string]interface{}, exceptions []map[string]interface{}) []map[string]interface{} {
 	for _, value := range tx {
 		if item["properties"] != nil {
-			for key, prop := range item["properties"].(map[string]interface{}) {
+			propsMap, ok := item["properties"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			for key, prop := range propsMap {
+				propMap, ok := prop.(map[string]interface{})
+				if !ok {
+					continue
+				}
 				if txValue, exists := value[key]; exists {
-					if prop.(map[string]interface{})["enum"] != nil {
-						enumStrings := convertEnumToStrings(prop.(map[string]interface{})["enum"])
-						if !slices.Contains(enumStrings, txValue.(string)) {
-							exceptions = append(exceptions, map[string]interface{}{"message": key + " " + txValue.(string) + " not found in enum"})
+					if propMap["enum"] != nil {
+						enumStrings := convertEnumToStrings(propMap["enum"])
+						if strVal, ok := txValue.(string); ok && !slices.Contains(enumStrings, strVal) {
+							exceptions = append(exceptions, map[string]interface{}{"message": key + " " + strVal + " not found in enum"})
 						}
 					}
 				}
@@ -84,27 +97,54 @@ func ValidateList(item map[string]interface{}, tx []map[string]interface{}, exce
 func ValidateProperties(properties map[string]interface{}, tx map[string]interface{}, exceptions []map[string]interface{}) []map[string]interface{} {
 
 	if properties["properties"] != nil {
-		for key, prop := range properties["properties"].(map[string]interface{}) {
+		propsMap, ok := properties["properties"].(map[string]interface{})
+		if !ok {
+			return exceptions
+		}
+		for key, prop := range propsMap {
+			propMap, ok := prop.(map[string]interface{})
+			if !ok {
+				continue
+			}
 			if txValue, exists := tx[key]; exists {
 				if reflect.TypeOf(txValue).Kind() == reflect.Map {
-					if prop.(map[string]interface{})["enum"] != nil {
-						enumStrings := convertEnumToStrings(prop.(map[string]interface{})["enum"])
-						if !slices.Contains(enumStrings, txValue.(string)) {
-							exceptions = append(exceptions, map[string]interface{}{"message": key + " " + txValue.(string) + " not found in enum"})
+					if propMap["enum"] != nil {
+						enumStrings := convertEnumToStrings(propMap["enum"])
+						if strVal, ok := txValue.(string); ok && !slices.Contains(enumStrings, strVal) {
+							exceptions = append(exceptions, map[string]interface{}{"message": key + " " + strVal + " not found in enum"})
 						}
 					}
-					exceptions = ValidateProperties(prop.(map[string]interface{}), txValue.(map[string]interface{}), exceptions)
-				}else if reflect.TypeOf(txValue).Kind() == reflect.Slice {
-					exceptions = ValidateList(prop.(map[string]interface{})["item"].(map[string]interface{}), txValue.([]map[string]interface{}), exceptions)
+					txValueMap, ok := txValue.(map[string]interface{})
+					if ok {
+						exceptions = ValidateProperties(propMap, txValueMap, exceptions)
+					}
+				} else if reflect.TypeOf(txValue).Kind() == reflect.Slice {
+					itemSchema, ok := propMap["item"].(map[string]interface{})
+					if !ok {
+						continue
+					}
+					txValueList, ok := txValue.([]map[string]interface{})
+					if !ok {
+						continue
+					}
+					exceptions = ValidateList(itemSchema, txValueList, exceptions)
 				}
 			}
 		}
 	}
-	
+
 	if properties["required"] != nil {
-		for _, req := range properties["required"].([]interface{}) {
-			if _, exists := tx[req.(string)]; !exists {
-				exceptions = append(exceptions, map[string]interface{}{"message": "Key " + req.(string) + " not found in tx"})
+		requiredSlice, ok := properties["required"].([]interface{})
+		if !ok {
+			return exceptions
+		}
+		for _, req := range requiredSlice {
+			reqStr, ok := req.(string)
+			if !ok {
+				continue
+			}
+			if _, exists := tx[reqStr]; !exists {
+				exceptions = append(exceptions, map[string]interface{}{"message": "Key " + reqStr + " not found in tx"})
 			}
 		}
 	}
