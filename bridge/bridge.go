@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -148,7 +149,17 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 		if response.Body != nil {
 			log.Println("CALLMICROSERVICE- ID0012 - response.Body != nil")
 			if bodyBytes, ok := response.Body.([]byte); ok {
-				if err := json.Unmarshal(bodyBytes, &responseObj); err != nil {
+				contentType := ""
+				if response.Headers != nil {
+					contentType = response.Headers.Get("Content-Type")
+				}
+				// Solo intentar JSON si la respuesta indica application/json.
+				// HTML (ngrok, error pages), XML, text/plain, etc. se devuelven como string.
+				if strings.Contains(contentType, "application/json") {
+					if err := json.Unmarshal(bodyBytes, &responseObj); err != nil {
+						responseObj = string(bodyBytes)
+					}
+				} else {
 					responseObj = string(bodyBytes)
 				}
 			} else {
