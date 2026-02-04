@@ -3,7 +3,7 @@ package modeltd
 import (
   "net/http"
   "fmt"
-//   "github.com/anthony-munozm/multipay-libs/bridge"
+  "github.com/anthony-munozm/multipay-libs/bridge"
   "github.com/anthony-munozm/multipay-libs/logger"
 )
 
@@ -27,23 +27,22 @@ func GetDataFromCallBridge(data interface{}, originalValue interface{}) interfac
 }
 
 func ModelToDict(fieldName string, idValue string, originalValue interface{}, headers http.Header) interface{} {
-	// switch fieldName {
-	// case "issuer_assignment_id":
-	// 	logger.LogInfo(fmt.Sprintf("ModelToDict - issuer_assignment_id: %s", idValue), nil)
-	// 	return GetDataFromCallBridge(bridge.MicroserviceC.CallIssuerCore("GET", fmt.Sprintf("/assignments/%s", idValue), nil, headers), originalValue)
-	// case "tenant_id":
-	// 	logger.LogInfo(fmt.Sprintf("ModelToDict - tenant_id: %s", idValue), nil)
-	// 	return GetDataFromCallBridge(bridge.MicroserviceC.CallAdminCore("GET", fmt.Sprintf("/tenants/%s", idValue), nil, headers), originalValue)
-	// case "to_account_id", "from_account_id":
-	// 	logger.LogInfo(fmt.Sprintf("ModelToDict - to_account_id or from_account_id: %s", idValue), nil)
-	// 	return GetDataFromCallBridge(bridge.MicroserviceC.CallAccountingCore("GET", fmt.Sprintf("/%s", idValue), nil, headers), originalValue)
-	// case "payment_method_id":
-	// 	logger.LogInfo(fmt.Sprintf("ModelToDict - payment_method_id: %s", idValue), nil)
-	// 	return GetDataFromCallBridge(bridge.MicroserviceC.CallTransactionCore("GET", fmt.Sprintf("/payment-methods/%s", idValue), nil, headers), originalValue)
-	// default:
-	// 	return originalValue
-	// }
-	return originalValue
+	switch fieldName {
+	case "issuer_assignment_id":
+		logger.LogInfo(fmt.Sprintf("ModelToDict - issuer_assignment_id: %s", idValue), nil)
+		return GetDataFromCallBridge(bridge.MicroserviceC.CallIssuerCore("GET", fmt.Sprintf("/assignments/%s", idValue), nil, headers), originalValue)
+	case "tenant_id":
+		logger.LogInfo(fmt.Sprintf("ModelToDict - tenant_id: %s", idValue), nil)
+		return GetDataFromCallBridge(bridge.MicroserviceC.CallAdminCore("GET", fmt.Sprintf("/tenants/%s", idValue), nil, headers), originalValue)
+	case "to_account_id", "from_account_id":
+		logger.LogInfo(fmt.Sprintf("ModelToDict - to_account_id or from_account_id: %s", idValue), nil)
+		return GetDataFromCallBridge(bridge.MicroserviceC.CallAccountingCore("GET", fmt.Sprintf("/%s", idValue), nil, headers), originalValue)
+	case "payment_method_id":
+		logger.LogInfo(fmt.Sprintf("ModelToDict - payment_method_id: %s", idValue), nil)
+		return GetDataFromCallBridge(bridge.MicroserviceC.CallTransactionCore("GET", fmt.Sprintf("/payment-methods/%s", idValue), nil, headers), originalValue)
+	default:
+		return originalValue
+	}
 }
 
 func CheckModelsToDict(data interface{}, headers http.Header) interface{} {
