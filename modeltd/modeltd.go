@@ -1,11 +1,20 @@
 package modeltd
 
 import (
-  "net/http"
-  "fmt"
-  "github.com/anthony-munozm/multipay-libs/bridge"
-  "github.com/anthony-munozm/multipay-libs/logger"
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/anthony-munozm/multipay-libs/bridge"
+	"github.com/anthony-munozm/multipay-libs/logger"
 )
+
+// DictResult holds both the id value and the resolved object for _id fields.
+// When Resolved is non-nil, the caller should set both key and key without "_id".
+type DictResult struct {
+	IDValue  interface{} // value for the _id key (e.g. original id)
+	Resolved interface{} // value for key without _id; nil if call failed or invalid response
+}
 
 func GetDataFromCallBridge(data interface{}, originalValue interface{}) interface{} {
 	logger.LogInfo(fmt.Sprintf("GetDataFromCallBridge - data: %v", data), nil)
@@ -26,20 +35,73 @@ func GetDataFromCallBridge(data interface{}, originalValue interface{}) interfac
 	return responseObj
 }
 
+// nilUUID is the zero value UUID; account IDs with this value should not be resolved via API.
+const nilUUID = "00000000-0000-0000-0000-000000000000"
+
+// shouldResolveID returns false when idValue is empty/whitespace or when it is the nil UUID for account fields.
+func shouldResolveID(idValue string, fieldName string) bool {
+	idValue = strings.TrimSpace(idValue)
+	if idValue == "" {
+		return false
+	}
+	if fieldName == "to_account_id" || fieldName == "from_account_id" {
+		if idValue == nilUUID {
+			return false
+		}
+	}
+	return true
+}
+
+// isValidBridgeResponse returns true when the bridge response is a successful map with "data" and no "error".
+func isValidBridgeResponse(response interface{}) bool {
+	respMap, ok := response.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	if _, hasError := respMap["error"]; hasError {
+		return false
+	}
+	_, hasData := respMap["data"]
+	return hasData
+}
+
 func ModelToDict(fieldName string, idValue string, originalValue interface{}, headers http.Header) interface{} {
+	if !shouldResolveID(idValue, fieldName) {
+		return DictResult{IDValue: originalValue, Resolved: nil}
+	}
 	switch fieldName {
 	case "issuer_assignment_id":
 		logger.LogInfo(fmt.Sprintf("ModelToDict - issuer_assignment_id: %s", idValue), nil)
-		return GetDataFromCallBridge(bridge.MicroserviceC.CallIssuerCore("GET", fmt.Sprintf("/assignments/%s", idValue), nil, headers), originalValue)
+		response := bridge.MicroserviceC.CallIssuerCore("GET", fmt.Sprintf("/assignments/%s", idValue), nil, headers)
+		if !isValidBridgeResponse(response) {
+			return DictResult{IDValue: originalValue, Resolved: nil}
+		}
+		resolved := GetDataFromCallBridge(response, originalValue)
+		return DictResult{IDValue: originalValue, Resolved: resolved}
 	case "tenant_id":
 		logger.LogInfo(fmt.Sprintf("ModelToDict - tenant_id: %s", idValue), nil)
-		return GetDataFromCallBridge(bridge.MicroserviceC.CallAdminCore("GET", fmt.Sprintf("/tenants/%s", idValue), nil, headers), originalValue)
+		response := bridge.MicroserviceC.CallAdminCore("GET", fmt.Sprintf("/tenants/%s", idValue), nil, headers)
+		if !isValidBridgeResponse(response) {
+			return DictResult{IDValue: originalValue, Resolved: nil}
+		}
+		resolved := GetDataFromCallBridge(response, originalValue)
+		return DictResult{IDValue: originalValue, Resolved: resolved}
 	case "to_account_id", "from_account_id":
 		logger.LogInfo(fmt.Sprintf("ModelToDict - to_account_id or from_account_id: %s", idValue), nil)
-		return GetDataFromCallBridge(bridge.MicroserviceC.CallAccountingCore("GET", fmt.Sprintf("/%s", idValue), nil, headers), originalValue)
+		response := bridge.MicroserviceC.CallAccountingCore("GET", fmt.Sprintf("/%s", idValue), nil, headers)
+		if !isValidBridgeResponse(response) {
+			return DictResult{IDValue: originalValue, Resolved: nil}
+		}
+		resolved := GetDataFromCallBridge(response, originalValue)
+		return DictResult{IDValue: originalValue, Resolved: resolved}
 	case "payment_method_id":
 		logger.LogInfo(fmt.Sprintf("ModelToDict - payment_method_id: %s", idValue), nil)
-		return GetDataFromCallBridge(bridge.MicroserviceC.CallTransactionCore("GET", fmt.Sprintf("/payment-methods/%s", idValue), nil, headers), originalValue)
+		response := bridge.MicroserviceC.CallTransactionCore("GET", fmt.Sprintf("/payment-methods/%s", idValue), nil, headers)
+		if !isValidBridgeResponse(response) {
+			return DictResult{IDValue: originalValue, Resolved: nil}
+		}
+		resolved := GetDataFromCallBridge(response, originalValue)
+		return DictResult{IDValue: originalValue, Resolved: resolved}
 	default:
 		return originalValue
 	}
@@ -58,8 +120,16 @@ func CheckModelsToDict(data interface{}, headers http.Header) interface{} {
 				}
 
 				logger.LogInfo(fmt.Sprintf("ModelToDict - key: %s idStr: %s", key, idStr), nil)
-				
-				maskedMap[key] = ModelToDict(key, idStr, value, headers)
+
+				result := ModelToDict(key, idStr, value, headers)
+				if dr, ok := result.(DictResult); ok {
+					maskedMap[key] = dr.IDValue
+					if dr.Resolved != nil {
+						maskedMap[strings.TrimSuffix(key, "_id")] = dr.Resolved
+					}
+				} else {
+					maskedMap[key] = result
+				}
 			} else {
 				maskedMap[key] = CheckModelsToDict(value, headers)
 			}
