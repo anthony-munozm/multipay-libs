@@ -3,6 +3,7 @@ package modeltd
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/anthony-munozm/multipay-libs/bridge"
@@ -37,6 +38,20 @@ func GetDataFromCallBridge(data interface{}, originalValue interface{}) interfac
 
 // nilUUID is the zero value UUID; account IDs with this value should not be resolved via API.
 const nilUUID = "00000000-0000-0000-0000-000000000000"
+
+// allowedIDFields is the list of field names that may be resolved via ModelToDict.
+// Only keys in this list are passed to ModelToDict; other *_id fields are left as-is.
+var allowedIDFields = []string{
+	"issuer_assignment_id",
+	"tenant_id",
+	"to_account_id",
+	"from_account_id",
+	"payment_method_id",
+}
+
+func isAllowedIDField(fieldName string) bool {
+	return slices.Contains(allowedIDFields, fieldName)
+}
 
 // shouldResolveID returns false when idValue is empty/whitespace or when it is the nil UUID for account fields.
 func shouldResolveID(idValue string, fieldName string) bool {
@@ -112,7 +127,7 @@ func CheckModelsToDict(data interface{}, headers http.Header) interface{} {
 	case map[string]interface{}:
 		maskedMap := make(map[string]interface{})
 		for key, value := range v {
-			if len(key) > 3 && key[len(key)-3:] == "_id" {
+			if len(key) > 3 && key[len(key)-3:] == "_id" && isAllowedIDField(key) {
 				idStr, ok := value.(string)
 				if !ok {
 					maskedMap[key] = CheckModelsToDict(value, headers)
