@@ -150,12 +150,12 @@ func CheckModelsToDict(data interface{}, headers http.Header) interface{} {
 			}
 		}
 		return maskedMap
-	// case []interface{}:
-	// 	maskedSlice := make([]interface{}, len(v))
-	// 	for i, value := range v {
-	// 		maskedSlice[i] = CheckModelsToDict(value, headers)
-	// 	}
-	// 	return maskedSlice
+	case []interface{}:
+		maskedSlice := make([]interface{}, len(v))
+		for i, value := range v {
+			maskedSlice[i] = CheckModelsToDict(value, headers)
+		}
+		return maskedSlice
 	default:
 		return v
 	}
