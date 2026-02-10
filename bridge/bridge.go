@@ -87,6 +87,8 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 			req.Header.Set("Accept", "application/json")
 		}
 
+		req.Header.Set("X-Internal-Request", "true")
+
 		log.Println("CALLMICROSERVICE- ID0006 - req.Header: ", req.Header)
 
 		if options.Headers != nil {
