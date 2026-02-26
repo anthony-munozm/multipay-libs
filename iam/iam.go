@@ -412,9 +412,12 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			"/api/accounting/healthz",
 			"/api/admin/healthz",
 			"/api/admin/iam/auth/login",
+			"/api/admin/iam/token/exchange/users",
 			"/api/customer/healthz",
 			"/api/issuer/healthz",
 			"/api/transaction/healthz",
+			"/api/admin/iam/auth/request-set-password",
+			"/adaptersinpe/healthz",
 			"/api/admin/settings/redis/build",
 		}
 
