@@ -311,6 +311,8 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	fmt.Printf("Scopes: %v\n", iamClaims.Scopes)
 	fmt.Printf("TenantID: %v\n", iamClaims.TenantID)
 	fmt.Printf("IdempotencyKey: %s\n", iamClaims.IdempotencyKey)
+	fmt.Printf("OwnerType: %s\n", iamClaims.OwnerType)
+	fmt.Printf("OwnerID: %s\n", iamClaims.OwnerID)
 	fmt.Println("===================================")
 
 	return iamClaims, nil
