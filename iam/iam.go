@@ -31,6 +31,8 @@ type IAMClaims struct {
 	Scopes         []string `json:"scopes"`          // admin:users:read, etc.
 	Locale         string   `json:"locale"`          // "es-CR"
 	IdempotencyKey string   `json:"idempotency_key"` // Key for idempotency
+	OwnerType      string   `json:"owner_type"`      // "customer", "partner", "tenant", "platform"
+	OwnerID        string   `json:"owner_id"`        // UUID del owner
 
 	// Extended fields for v2 JWT with permissions system
 	Metadata map[string]interface{} `json:"-"` // Not serialized, used internally for assignments, etc.
@@ -47,6 +49,8 @@ type IAMContext struct {
 	Scopes      []string // ["admin:users:read", ...]
 	Locale      string   // "es-CR"
 	UserID      string   // ID interno del usuario (sub del JWT)
+	OwnerType   string   // "customer", "partner", "tenant", "platform"
+	OwnerID     string   // owner identifier (for customer: identification number; for tenant/partner: UUID)
 }
 
 // HasScope verifica si el contexto tiene un scope específico
@@ -328,6 +332,9 @@ func buildIAMContext(claims *IAMClaims) *IAMContext {
 	if claims.TenantID != nil {
 		ctx.TenantID = *claims.TenantID
 	}
+	// Map owner fields into context for quick access
+	ctx.OwnerType = claims.OwnerType
+	ctx.OwnerID = claims.OwnerID
 
 	return ctx
 }
@@ -1305,6 +1312,50 @@ func RequireUserTypeDB() echo.MiddlewareFunc {
 					"error": map[string]interface{}{
 						"code":    "IAM_USER_TYPE_NOT_ALLOWED",
 						"message": "Tipo de usuario no permitido para esta operación",
+					},
+				})
+			}
+
+			return next(c)
+		}
+	}
+}
+
+// RequireCustomerAccess valida que el usuario tenga owner_type="customer" y el scope requerido
+func RequireAccountOwnership(requiredScope string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			// Extraer claims del contexto
+			claims, ok := c.Get("iam_claims").(*IAMClaims)
+			if !ok || claims == nil {
+				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+					"success": false,
+					"error": map[string]interface{}{
+						"code":    "IAM_CLAIMS_NOT_FOUND",
+						"message": "IAM claims not found",
+					},
+				})
+			}
+
+			// Validar owner_type
+			if claims.OwnerType != "customer" {
+				return c.JSON(http.StatusForbidden, map[string]interface{}{
+					"success": false,
+					"error": map[string]interface{}{
+						"code":    "IAM_INVALID_OWNER_TYPE",
+						"message": "Access restricted to customers",
+					},
+				})
+			}
+
+			// Validar scope
+			if !slices.Contains(claims.Scopes, requiredScope) {
+				logAuthorizationDenied(c, "MISSING_REQUIRED_SCOPE", fmt.Sprintf("Required scope: %s", requiredScope))
+				return c.JSON(http.StatusForbidden, map[string]interface{}{
+					"success": false,
+					"error": map[string]interface{}{
+						"code":    "IAM_MISSING_SCOPE",
+						"message": fmt.Sprintf("Required scope: %s", requiredScope),
 					},
 				})
 			}
