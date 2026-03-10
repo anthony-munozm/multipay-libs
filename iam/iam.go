@@ -299,6 +299,14 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 		iamClaims.IdempotencyKey = idempotencyKey
 	}
 
+	if ownerID, ok := claims["owner_id"].(string); ok {
+		iamClaims.OwnerID = ownerID
+	}
+
+	if ownerType, ok := claims["owner_type"].(string); ok {
+		iamClaims.OwnerType = ownerType
+	}
+
 	// Log detallado de todos los claims extraídos del token
 	fmt.Println("=== IAM TOKEN CLAIMS EXTRAÍDOS ===")
 	fmt.Printf("Sub: %s\n", iamClaims.Sub)
