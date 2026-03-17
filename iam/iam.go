@@ -704,15 +704,15 @@ func RequirePermWithService(permService PermissionService, requiredPerm string) 
 			}
 
 			if isSensitive {
-				// Verificar que el usuario tenga un rol que permita acceder a permisos sensibles
-				if iamCtx.UserType != "platform_admin" && iamCtx.UserType != "treasury_approver" {
+				// Permitir platform_admin, treasury_approver o tenant_admin para operaciones sensibles
+				if iamCtx.UserType != "platform_admin" && iamCtx.UserType != "treasury_approver" && iamCtx.UserType != "tenant_admin" {
 					logAuthorizationDenied(c, "INSUFFICIENT_PERMISSIONS_FOR_SENSITIVE", fmt.Sprintf("Required permission: %s", requiredPerm))
 					return c.JSON(http.StatusForbidden, map[string]interface{}{
 						"success": false,
 						"error": map[string]interface{}{
 							"code":    "AUTHORIZATION_FAILED",
 							"message": "Insufficient permissions for sensitive operation",
-							"detail":  "This operation requires treasury_approver or platform_admin role",
+							"detail":  "This operation requires platform_admin, treasury_approver or tenant_admin role",
 						},
 					})
 				}
@@ -810,7 +810,7 @@ func RequireAnyPermWithService(permService PermissionService, requiredPerms ...s
 						isSensitive = false
 					}
 
-					if isSensitive && iamCtx.UserType != "treasury_approver" {
+					if isSensitive && iamCtx.UserType != "treasury_approver" && iamCtx.UserType != "tenant_admin" {
 						continue
 					}
 					return next(c)
@@ -1078,7 +1078,7 @@ func GetActiveAssignmentID(tokenClaims map[string]interface{}) string {
 // Comportamiento:
 //   - Si JWT_REQUIRED=false, permite acceso sin validación (útil para desarrollo)
 //   - Si JWT_REQUIRED=true, valida que el usuario tenga el permiso en sus claims
-//   - Valida permisos sensibles (requieren treasury_approver o platform_admin)
+//   - Valida permisos sensibles (requieren platform_admin, treasury_approver o tenant_admin)
 //   - platform_admin tiene acceso a todos los permisos
 func RequirePermDB(requiredPerm string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -1103,15 +1103,15 @@ func RequirePermDB(requiredPerm string) echo.MiddlewareFunc {
 
 			// Verificar si el permiso es sensible consultando Redis
 			if IsPermissionSensitive(requiredPerm) {
-				// Verificar que el usuario tenga un rol que permita acceder a permisos sensibles
+				// Permitir platform_admin, treasury_approver o tenant_admin (si tiene el permiso en scopes, se valida después)
 				userType := claims.UserType
-				if userType != "platform_admin" && userType != "treasury_approver" {
+				if userType != "platform_admin" && userType != "treasury_approver" && userType != "tenant_admin" {
 					return c.JSON(http.StatusForbidden, map[string]interface{}{
 						"success": false,
 						"error": map[string]interface{}{
 							"code":    "AUTHORIZATION_FAILED",
 							"message": "Insufficient permissions for sensitive operation",
-							"detail":  "This operation requires treasury_approver or platform_admin role",
+							"detail":  "This operation requires platform_admin, treasury_approver or tenant_admin role",
 						},
 					})
 				}
@@ -1189,15 +1189,15 @@ func RequireAnyPermDB(requiredPerms ...string) echo.MiddlewareFunc {
 
 			// Verificar si tiene al menos uno de los permisos requeridos
 			for _, requiredPerm := range requiredPerms {
-				for _, perm := range perms {
-					if perm == requiredPerm {
-						// Verificar si es sensible
-						if IsPermissionSensitive(requiredPerm) && userType != "treasury_approver" {
-							continue
+					for _, perm := range perms {
+						if perm == requiredPerm {
+							// Verificar si es sensible: permitir treasury_approver o tenant_admin
+							if IsPermissionSensitive(requiredPerm) && userType != "treasury_approver" && userType != "tenant_admin" {
+								continue
+							}
+							return next(c)
 						}
-						return next(c)
 					}
-				}
 			}
 
 			return c.JSON(http.StatusForbidden, map[string]interface{}{
