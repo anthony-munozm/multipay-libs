@@ -64,23 +64,23 @@ type Schema struct {
 }
 
 func GetIdentificationSchemaService(c echo.Context, issuer, countryCode string) (interface{}, error) {
-	logger.LogInfo("GetIdentificationSchemaService request", c.Request())
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService request: %+v", c.Request()), nil)
 	headers := make(http.Header)
 	if c != nil && c.Request() != nil {
 		headers = c.Request().Header
 	}
 
-	logger.LogInfo("GetIdentificationSchemaService headers", headers)
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService headers: %+v", headers), nil)
 
 	path := fmt.Sprintf("/assignments/metadata?issuer=%s&country_code=%s",
 		url.QueryEscape(issuer),
 		url.QueryEscape(countryCode),
 	)
 
-	logger.LogInfo("GetIdentificationSchemaService path", path)
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService path: %s", path), nil)
 
 	resp := bridge.MicroserviceC.CallIssuerCore("GET", path, nil, headers)
-	logger.LogInfo("GetIdentificationSchemaService resp", resp)
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService resp: %+v", resp), nil)
 	if c != nil {
 		logger.LogInfo("GetIdentificationSchema Raw response from issuer-core: ", c.Request())
 	}
@@ -91,7 +91,7 @@ func GetIdentificationSchemaService(c echo.Context, issuer, countryCode string) 
 		return nil, fmt.Errorf("respuesta inválida del issuer-core: formato inesperado")
 	}
 
-	logger.LogInfo("GetIdentificationSchemaService respMap", respMap)
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService respMap: %+v", respMap), nil)
 
 	if success, _ := respMap["success"].(bool); !success {
 		var errorMsg string
@@ -106,7 +106,7 @@ func GetIdentificationSchemaService(c echo.Context, issuer, countryCode string) 
 		return nil, fmt.Errorf("issuer-core devolvió error: %s", errorMsg)
 	}
 
-	logger.LogInfo("GetIdentificationSchemaService success", success)
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService success"), nil)
 
 	// Type assertion de data
 	responseIface, ok := respMap["data"]
@@ -114,14 +114,14 @@ func GetIdentificationSchemaService(c echo.Context, issuer, countryCode string) 
 		return nil, fmt.Errorf("formato inesperado: no hay 'data' en issuer-core")
 	}
 
-	logger.LogInfo("GetIdentificationSchemaService responseIface", responseIface)
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService responseIface: %+v", responseIface), nil)
 
 	responseObj, ok := responseIface.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("formato inesperado: 'data' no es un objeto")
 	}
 
-	logger.LogInfo("GetIdentificationSchemaService responseObj", responseObj)
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService responseObj: %+v", responseObj), nil)
 
 	schema, ok := responseObj["identification_schema"]
 	if !ok {
@@ -132,29 +132,29 @@ func GetIdentificationSchemaService(c echo.Context, issuer, countryCode string) 
 		return nil, fmt.Errorf("no se encontró identification_schema en metadata. Claves disponibles: %v", availableKeys)
 	}
 
-	logger.LogInfo("GetIdentificationSchemaService schema", schema)
+	logger.LogInfo(fmt.Sprintf("GetIdentificationSchemaService schema: %+v", schema), nil)
 
 	return schema, nil
 }
 
 func GetContactSchemaService(c echo.Context, issuer, countryCode string) (interface{}, error) {
-	logger.LogInfo("GetContactSchemaService request", c.Request())
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService request: %+v", c.Request()), nil)
 	headers := make(http.Header)
 	if c != nil && c.Request() != nil {
 		headers = c.Request().Header
 	}
 
-	logger.LogInfo("GetContactSchemaService headers", headers)
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService headers: %+v", headers), nil)
 
 	path := fmt.Sprintf("/assignments/metadata?issuer=%s&country_code=%s",
 		url.QueryEscape(issuer),
 		url.QueryEscape(countryCode),
 	)
 
-	logger.LogInfo("GetContactSchemaService path", path)
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService path: %s", path), nil)
 
 	resp := bridge.MicroserviceC.CallIssuerCore("GET", path, nil, headers)
-	logger.LogInfo("GetContactSchemaService resp", resp)
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService resp: %+v", resp), nil)
 	if c != nil {
 		logger.LogInfo("GetContactSchema Raw data from issuer-core: ", c.Request())
 	}
@@ -165,7 +165,7 @@ func GetContactSchemaService(c echo.Context, issuer, countryCode string) (interf
 		return nil, fmt.Errorf("respuesta inválida del issuer-core: formato inesperado")
 	}
 
-	logger.LogInfo("GetContactSchemaService respMap", respMap)
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService respMap: %+v", respMap), nil)
 
 	if success, _ := respMap["success"].(bool); !success {
 		var errorMsg string
@@ -180,7 +180,7 @@ func GetContactSchemaService(c echo.Context, issuer, countryCode string) (interf
 		return nil, fmt.Errorf("issuer-core devolvió error: %s", errorMsg)
 	}
 
-	logger.LogInfo("GetContactSchemaService success", success)
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService success"), nil)
 
 	// Type assertion de data
 	responseIface, ok := respMap["data"]
@@ -188,14 +188,14 @@ func GetContactSchemaService(c echo.Context, issuer, countryCode string) (interf
 		return nil, fmt.Errorf("formato inesperado: no hay 'data' en issuer-core")
 	}
 
-	logger.LogInfo("GetContactSchemaService responseIface", responseIface)
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService responseIface: %+v", responseIface), nil)
 
 	responseObj, ok := responseIface.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("formato inesperado: 'data' no es un objeto")
 	}
 
-	logger.LogInfo("GetContactSchemaService responseObj", responseObj)
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService responseObj: %+v", responseObj), nil)
 
 	schema, ok := responseObj["contact_schema"]
 	if !ok {
@@ -206,7 +206,7 @@ func GetContactSchemaService(c echo.Context, issuer, countryCode string) (interf
 		return nil, fmt.Errorf("no se encontró contact_schema en metadata. Claves disponibles: %v", availableKeys)
 	}
 
-	logger.LogInfo("GetContactSchemaService schema", schema)
+	logger.LogInfo(fmt.Sprintf("GetContactSchemaService schema: %+v", schema), nil)
 
 	return schema, nil
 }
@@ -341,60 +341,60 @@ func ValidateSchemaFieldService(fieldName string, fieldValue interface{}, proper
 }
 
 func ValidateMetadataService(c echo.Context, req CustomerDTO) (error) {
-	logger.LogInfo("ValidateMetadataService request", req)
+	logger.LogInfo(fmt.Sprintf("ValidateMetadataService request: %+v", req), nil)
 	countryCode, ok := req.Metadata["country_code"].(string)
 	if !ok || countryCode == "" {
 		return fmt.Errorf("el campo country_code es requerido en metadata para validación de schemas")
 	}
 
-	logger.LogInfo("ValidateMetadataService countryCode", countryCode)
+	logger.LogInfo(fmt.Sprintf("ValidateMetadataService countryCode: %s", countryCode), nil)
 
 	if countryCode == "CR" && req.Type == "" {
 		return errors.New("el campo type es obligatorio para clientes en Costa Rica")
 	}
 
-	logger.LogInfo("ValidateMetadataService issuer", issuer)
+	logger.LogInfo(fmt.Sprintf("ValidateMetadataService issuer"), nil)
 
 	issuer, ok := req.Metadata["issuer"].(string)
 	if !ok || issuer == "" {
 		return fmt.Errorf("el campo issuer es requerido en metadata para validación de schemas")
 	}
 
-	logger.LogInfo("ValidateMetadataService issuer", issuer)
+	logger.LogInfo(fmt.Sprintf("ValidateMetadataService issuer: %s", issuer), nil)
 
 	identSchemaResp, err := GetIdentificationSchemaService(c, issuer, countryCode)
 	if err != nil {
 		return fmt.Errorf("error obteniendo identification schema desde issuer-core: %w", err)
 	}
 
-	logger.LogInfo("ValidateMetadataService identSchemaResp", identSchemaResp)
+	logger.LogInfo(fmt.Sprintf("ValidateMetadataService identSchemaResp: %+v", identSchemaResp), nil)
 
 	contactSchemaResp, err := GetContactSchemaService(c, issuer, countryCode)
 	if err != nil {
 		return fmt.Errorf("error obteniendo contact schema desde issuer-core: %w", err)
 	}
 
-	logger.LogInfo("ValidateMetadataService contactSchemaResp", contactSchemaResp)
+	logger.LogInfo(fmt.Sprintf("ValidateMetadataService contactSchemaResp: %+v", contactSchemaResp), nil)
 
 	identMap, err := StructToMapService(req.Identification)
 	if err != nil {
 		return fmt.Errorf("error convirtiendo identification: %w", err)
 	}
 
-	logger.LogInfo("ValidateMetadataService identMap", identMap)
+	logger.LogInfo(fmt.Sprintf("ValidateMetadataService identMap: %+v", identMap), nil)
 
 	contactMap, err := StructToMapService(req.Contact)
 	if err != nil {
 		return fmt.Errorf("error convirtiendo contact: %w", err)
 	}
 
-	logger.LogInfo("ValidateMetadataService contactMap", contactMap)
+	logger.LogInfo(fmt.Sprintf("ValidateMetadataService contactMap: %+v", contactMap), nil)
 
 	if err := ValidateCustomerSchemasService(c, identMap, contactMap, identSchemaResp, contactSchemaResp); err != nil {
 		return fmt.Errorf("validación de schemas falló: %w", err)
 	}
 
-	logger.LogInfo("ValidateMetadataService validation successful")
+	logger.LogInfo("ValidateMetadataService validation successful", nil)
 
 	return nil
 }
