@@ -36,7 +36,7 @@ var MicroserviceC *MicroserviceClient
 func NewMicroserviceClient() *MicroserviceClient {
 	baseURL := os.Getenv("GATEWAY_URL")
 	if baseURL == "" {
-		baseURL = "https://11859073a800.ngrok-free.app/api"
+		baseURL = "https://11859073a800.ngrok-free.app"
 	}
 
 	MicroserviceC = &MicroserviceClient{
@@ -186,7 +186,7 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 }
 
 func (mc *MicroserviceClient) CallAdapterSinpe(method, path string, body interface{}, headers http.Header) interface{} {
-	fullPath := fmt.Sprintf("/adapter/sinpe/IEntidadXBS%s", path)
+	fullPath := fmt.Sprintf("/api/adapter/sinpe/IEntidadXBS%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
 		Path:    fullPath,
@@ -196,7 +196,7 @@ func (mc *MicroserviceClient) CallAdapterSinpe(method, path string, body interfa
 }
 
 func (mc *MicroserviceClient) CallAdminCore(method, path string, body interface{}, headers http.Header) interface{} {
-	fullPath := fmt.Sprintf("/admin%s", path)
+	fullPath := fmt.Sprintf("/api/admin%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
 		Path:    fullPath,
@@ -206,7 +206,7 @@ func (mc *MicroserviceClient) CallAdminCore(method, path string, body interface{
 }
 
 func (mc *MicroserviceClient) CallIssuerCore(method, path string, body interface{}, headers http.Header) interface{} {
-	fullPath := fmt.Sprintf("/issuer%s", path)
+	fullPath := fmt.Sprintf("/api/issuer%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
 		Path:    fullPath,
@@ -216,7 +216,7 @@ func (mc *MicroserviceClient) CallIssuerCore(method, path string, body interface
 }
 
 func (mc *MicroserviceClient) CallCustomerCore(method, path string, body interface{}, headers http.Header) interface{} {
-	fullPath := fmt.Sprintf("/customer%s", path)
+	fullPath := fmt.Sprintf("/api/customer%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
 		Path:    fullPath,
@@ -226,7 +226,7 @@ func (mc *MicroserviceClient) CallCustomerCore(method, path string, body interfa
 }
 
 func (mc *MicroserviceClient) CallAccountingCore(method, path string, body interface{}, headers http.Header) interface{} {
-	fullPath := fmt.Sprintf("/accounting%s", path)
+	fullPath := fmt.Sprintf("/api/accounting%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
 		Path:    fullPath,
@@ -236,7 +236,7 @@ func (mc *MicroserviceClient) CallAccountingCore(method, path string, body inter
 }
 
 func (mc *MicroserviceClient) CallTransactionCore(method, path string, body interface{}, headers http.Header) interface{} {
-	fullPath := fmt.Sprintf("/transaction%s", path)
+	fullPath := fmt.Sprintf("/api/transaction%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
 		Path:    fullPath,
