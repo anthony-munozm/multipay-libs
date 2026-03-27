@@ -186,7 +186,7 @@ func (mc *MicroserviceClient) CallMicroservice(options RequestOptions) interface
 }
 
 func (mc *MicroserviceClient) CallAdapterSinpe(method, path string, body interface{}, headers http.Header) interface{} {
-	fullPath := fmt.Sprintf("/api/adapter/sinpe/IEntidadXBS%s", path)
+	fullPath := fmt.Sprintf("/adapter/sinpe/IEntidadXBS%s", path)
 	return mc.CallMicroservice(RequestOptions{
 		Method:  method,
 		Path:    fullPath,
