@@ -31,6 +31,7 @@ type Contact struct {
 type CustomerDTO struct {
 	ID                   string                 `json:"id"`
 	Type                 string                 `json:"type"`
+	LegalName            string                 `json:"legal_name"`
 	FirstName            string                 `json:"first_name"`
 	MiddleName           string                 `json:"middle_name"`
 	LastName             string                 `json:"last_name"`
