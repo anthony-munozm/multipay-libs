@@ -453,7 +453,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 				logger.LogInfo(fmt.Sprintf("IAM auth failed: %v", err), c.Request())
 
 				// Determinar código de error específico basado en el mensaje
-				errorCode := "IAM_INVALID_TOKEN"
+				errorCode := "IAM_INVALID_TOKEN_EXTRACT"
 				errorMsg := err.Error()
 				if strings.Contains(errorMsg, "IAM_INVALID_ISSUER") {
 					errorCode = "IAM_INVALID_ISSUER"
@@ -504,8 +504,8 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 				if err := validateIAMContext(iamCtx); err != nil {
 					logger.LogInfo(fmt.Sprintf("IAM context validation failed: %v", err), c.Request())
 					return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-						"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN", err.Error()),
-						"code":    "IAM_INVALID_TOKEN",
+						"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN_VALIDATE", err.Error()),
+						"code":    "IAM_INVALID_TOKEN_VALIDATE",
 					})
 				}
 
@@ -540,7 +540,7 @@ func RequireScope(scope string) echo.MiddlewareFunc {
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN_SCOPE", err.Error()),
-					"code":    "IAM_INVALID_TOKEN",
+					"code":    "IAM_INVALID_TOKEN_SCOPE",
 				})
 			}
 
@@ -564,8 +564,8 @@ func RequireAnyScope(scopes ...string) echo.MiddlewareFunc {
 			iamCtx, err := GetIAMContext(c)
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN", err.Error()),
-					"code":    "IAM_INVALID_TOKEN",
+					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN_ANY_SCOPE", err.Error()),
+					"code":    "IAM_INVALID_TOKEN_ANY_SCOPE",
 				})
 			}
 
@@ -573,7 +573,7 @@ func RequireAnyScope(scopes ...string) echo.MiddlewareFunc {
 				logAuthorizationDenied(c, "MISSING_REQUIRED_SCOPE", fmt.Sprintf("Required one of scopes: %v", scopes))
 				return c.JSON(http.StatusForbidden, map[string]interface{}{
 					"message": errormap.GenerateErrorMessage("IAM_MISSING_SCOPE", fmt.Sprintf("Required one of scopes: %v", scopes)),
-					"code":    "IAM_MISSING_SCOPE",
+					"code":    "IAM_MISSING_ANY_SCOPE",
 				})
 			}
 
@@ -589,8 +589,8 @@ func RequireUserType(userType string) echo.MiddlewareFunc {
 			iamCtx, err := GetIAMContext(c)
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN", err.Error()),
-					"code":    "IAM_INVALID_TOKEN",
+					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN_USER_TYPE", err.Error()),
+					"code":    "IAM_INVALID_TOKEN_USER_TYPE",
 				})
 			}
 
@@ -614,8 +614,8 @@ func RequireAnyUserType(userTypes ...string) echo.MiddlewareFunc {
 			iamCtx, err := GetIAMContext(c)
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN", err.Error()),
-					"code":    "IAM_INVALID_TOKEN",
+					"message": errormap.GenerateErrorMessage("IAM_INVALID_TOKEN_ANY_USER_TYPE", err.Error()),
+					"code":    "IAM_INVALID_TOKEN_ANY_USER_TYPE",
 				})
 			}
 
