@@ -486,7 +486,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 						"code":    "IAM_JWT_ISSUE_ERROR",
 					})
 				}
-				c.Request().Header.Set("Authorization", "Bearer "+newToken)
+				// c.Request().Header.Set("Authorization", "Bearer "+newToken)
 				claims.IdempotencyKey = currentIdempotencyKey
 				c.Request().Header.Set("Idempotency-Key", currentIdempotencyKey)
 			} else if currentIdempotencyKey == claims.IdempotencyKey {
