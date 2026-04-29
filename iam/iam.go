@@ -478,7 +478,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			c.Set("iam_claims", claims)
 
 			if claims.IdempotencyKey == "" || currentIdempotencyKey != claims.IdempotencyKey {
-				newToken, err := reissueJWTWithIdempotencyKey(claims, currentIdempotencyKey)
+				_, err := reissueJWTWithIdempotencyKey(claims, currentIdempotencyKey)
 				if err != nil {
 					logger.LogInfo(fmt.Sprintf("Failed to re-issue JWT with idempotency key: %v", err), c.Request())
 					return c.JSON(http.StatusInternalServerError, map[string]interface{}{
