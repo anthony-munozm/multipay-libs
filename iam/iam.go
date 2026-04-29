@@ -179,6 +179,7 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	tokenString := parts[1]
 
 	// Log del token (primeros 50 caracteres por seguridad)
+	fmt.Println("IAM Auth - Token received: ", tokenString)
 	tokenPreview := tokenString
 	if len(tokenString) > 50 {
 		tokenPreview = tokenString[:50] + "..."
@@ -1189,15 +1190,15 @@ func RequireAnyPermDB(requiredPerms ...string) echo.MiddlewareFunc {
 
 			// Verificar si tiene al menos uno de los permisos requeridos
 			for _, requiredPerm := range requiredPerms {
-					for _, perm := range perms {
-						if perm == requiredPerm {
-							// Verificar si es sensible: permitir treasury_approver o tenant_admin
-							if IsPermissionSensitive(requiredPerm) && userType != "treasury_approver" && userType != "tenant_admin" {
-								continue
-							}
-							return next(c)
+				for _, perm := range perms {
+					if perm == requiredPerm {
+						// Verificar si es sensible: permitir treasury_approver o tenant_admin
+						if IsPermissionSensitive(requiredPerm) && userType != "treasury_approver" && userType != "tenant_admin" {
+							continue
 						}
+						return next(c)
 					}
+				}
 			}
 
 			return c.JSON(http.StatusForbidden, map[string]interface{}{
