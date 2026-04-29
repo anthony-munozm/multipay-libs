@@ -478,17 +478,17 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			c.Set("iam_claims", claims)
 
 			if claims.IdempotencyKey == "" || currentIdempotencyKey != claims.IdempotencyKey {
-				// newToken, err := reissueJWTWithIdempotencyKey(claims, currentIdempotencyKey)
-				// if err != nil {
-				// 	logger.LogInfo(fmt.Sprintf("Failed to re-issue JWT with idempotency key: %v", err), c.Request())
-				// 	return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				// 		"message": errormap.GenerateErrorMessage("IAM_JWT_ISSUE_ERROR", err.Error()),
-				// 		"code":    "IAM_JWT_ISSUE_ERROR",
-				// 	})
-				// }
-				// c.Request().Header.Set("Authorization", "Bearer "+newToken)
-				// claims.IdempotencyKey = currentIdempotencyKey
-				// c.Request().Header.Set("Idempotency-Key", currentIdempotencyKey)
+				newToken, err := reissueJWTWithIdempotencyKey(claims, currentIdempotencyKey)
+				if err != nil {
+					logger.LogInfo(fmt.Sprintf("Failed to re-issue JWT with idempotency key: %v", err), c.Request())
+					return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+						"message": errormap.GenerateErrorMessage("IAM_JWT_ISSUE_ERROR", err.Error()),
+						"code":    "IAM_JWT_ISSUE_ERROR",
+					})
+				}
+				c.Request().Header.Set("Authorization", "Bearer "+newToken)
+				claims.IdempotencyKey = currentIdempotencyKey
+				c.Request().Header.Set("Idempotency-Key", currentIdempotencyKey)
 			} else if currentIdempotencyKey == claims.IdempotencyKey {
 				validateJWT = false
 			}
