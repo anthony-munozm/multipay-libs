@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"slices"
@@ -1068,6 +1069,50 @@ func GetActiveAssignmentID(tokenClaims map[string]interface{}) string {
 
 // ===== REQUIRE PERM DB - MIDDLEWARE DE AUTORIZACIÓN =====
 
+// shouldBypassRequirePermDBByIP permite omitir la validación de permisos por IP.
+// Configuración mediante IAM_BYPASS_IPS:
+//   - Lista separada por comas
+//   - Soporta IP exacta (ej: 10.0.0.5) y CIDR (ej: 10.0.0.0/24)
+func shouldBypassRequirePermDBByIP(c echo.Context) bool {
+	bypassIPs := strings.TrimSpace(os.Getenv("IAM_BYPASS_IPS"))
+	if bypassIPs == "" {
+		return false
+	}
+
+	realIP := strings.TrimSpace(c.RealIP())
+	if realIP == "" {
+		return false
+	}
+
+	fmt.Println("realIP", realIP)
+
+	parsedRealIP := net.ParseIP(realIP)
+	if parsedRealIP == nil {
+		return false
+	}
+
+	for _, candidate := range strings.Split(bypassIPs, ",") {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			continue
+		}
+
+		// Coincidencia exacta de IP
+		if candidate == realIP {
+			return true
+		}
+
+		// Coincidencia por rango CIDR
+		if strings.Contains(candidate, "/") {
+			if _, ipNet, err := net.ParseCIDR(candidate); err == nil && ipNet != nil && ipNet.Contains(parsedRealIP) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // RequirePermDB valida que el usuario tenga el permiso requerido usando Redis cache
 // Esta función no requiere gorm.DB, solo usa Redis para consultar permisos sensibles
 // Parámetros:
@@ -1086,6 +1131,11 @@ func RequirePermDB(requiredPerm string) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			// Verificar si JWT es requerido - si no, permitir acceso sin validación
 			if !GetJWTRequired() {
+				return next(c)
+			}
+
+			// Permitir bypass por IP para casos de infraestructura confiable.
+			if shouldBypassRequirePermDBByIP(c) {
 				return next(c)
 			}
 
