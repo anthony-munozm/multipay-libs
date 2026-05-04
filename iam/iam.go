@@ -1075,6 +1075,7 @@ func GetActiveAssignmentID(tokenClaims map[string]interface{}) string {
 //   - Soporta IP exacta (ej: 10.0.0.5) y CIDR (ej: 10.0.0.0/24)
 func shouldBypassRequirePermDBByIP(c echo.Context) bool {
 	bypassIPs := strings.TrimSpace(os.Getenv("IAM_BYPASS_IPS"))
+	fmt.Println("bypassIPs", bypassIPs)
 	if bypassIPs == "" {
 		return false
 	}
