@@ -444,7 +444,7 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		jwtRequired := GetJWTRequired()
 
-		if !slices.Contains(excludeJWTPaths, c.Request().URL.Path) && jwtRequired {
+		if !slices.Contains(excludeJWTPaths, c.Request().URL.Path) && jwtRequired && !shouldBypassRequirePermDBByIP(c) {
 
 			currentIdempotencyKey := c.Request().Header.Get("Idempotency-Key")
 
