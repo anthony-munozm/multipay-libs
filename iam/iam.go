@@ -249,44 +249,70 @@ type iamContextKey struct{}
 // IAMContextKey es la clave para obtener IAMContext del contexto
 var IAMContextKey = &iamContextKey{}
 
+func peekJWTAlgAndIssuer(tokenString string) (alg, iss string) {
+	parser := jwt.NewParser()
+	token, _, err := parser.ParseUnverified(tokenString, jwt.MapClaims{})
+	if err != nil {
+		return "", ""
+	}
+	if rawAlg, ok := token.Header["alg"].(string); ok {
+		alg = rawAlg
+	}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		if rawIss, ok := claims["iss"].(string); ok {
+			iss = rawIss
+		}
+	}
+	return alg, iss
+}
+
 // extractIAMClaimsFromRequest extrae y valida los claims IAM del JWT en el Authorization header
 func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
+	fmt.Printf("IAM Auth - [internal-jwt] start path=%s\n", c.Request().URL.Path)
+
 	tokenString, err := getBearerTokenFromRequest(c)
 	if err != nil {
+		fmt.Printf("IAM Auth - [internal-jwt] bearer token error: %v\n", err)
 		return nil, err
 	}
 
-	// Log del token (primeros 50 caracteres por seguridad)
-	fmt.Println("IAM Auth - Token received: ", tokenString)
 	tokenPreview := tokenString
 	if len(tokenString) > 50 {
 		tokenPreview = tokenString[:50] + "..."
 	}
-	fmt.Printf("IAM Auth - Token received: %s\n", tokenPreview)
+	fmt.Printf("IAM Auth - [internal-jwt] token preview: %s\n", tokenPreview)
+
+	alg, iss := peekJWTAlgAndIssuer(tokenString)
+	fmt.Printf("IAM Auth - [internal-jwt] unverified metadata alg=%s iss=%s\n", alg, iss)
 
 	// Obtener signing key
 	signingKey := GetIAMJWTSigningKey()
 	if signingKey == "" {
+		fmt.Println("IAM Auth - [internal-jwt] IAM_JWT_SIGNING_KEY not configured")
 		return nil, fmt.Errorf("IAM_JWT_SIGNING_KEY not configured")
 	}
+	fmt.Println("IAM Auth - [internal-jwt] signing key configured, parsing as HS256")
 
 	// Parsear y validar el token
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			fmt.Printf("IAM Auth - [internal-jwt] keyfunc rejected alg=%v (expected HS256)\n", token.Header["alg"])
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
+		fmt.Println("IAM Auth - [internal-jwt] keyfunc accepted HS256")
 		return []byte(signingKey), nil
 	})
 
 	if err != nil {
-		fmt.Println("IAM Auth - Failed to parse token", "error", err.Error())
+		fmt.Printf("IAM Auth - [internal-jwt] parse failed: %v\n", err)
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
 
 	if !token.Valid {
-		fmt.Println("IAM Auth - Token validation failed")
+		fmt.Println("IAM Auth - [internal-jwt] token.Valid=false")
 		return nil, fmt.Errorf("invalid token")
 	}
+	fmt.Println("IAM Auth - [internal-jwt] token parsed and valid")
 
 	// Extraer claims
 	claims, ok := token.Claims.(jwt.MapClaims)
@@ -305,11 +331,12 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	expectedIssuer := GetIAMJWTIssuer()
 	if issuer, ok := claims["iss"].(string); ok {
 		if issuer != expectedIssuer {
-			fmt.Println("IAM Auth - Invalid issuer", "expected", expectedIssuer, "got", issuer)
+			fmt.Printf("IAM Auth - [internal-jwt] invalid issuer expected=%s got=%s\n", expectedIssuer, issuer)
 			return nil, fmt.Errorf("IAM_INVALID_ISSUER: expected %s, got %s", expectedIssuer, issuer)
 		}
+		fmt.Printf("IAM Auth - [internal-jwt] issuer ok: %s\n", issuer)
 	} else {
-		fmt.Println("IAM Auth - Missing issuer claim")
+		fmt.Println("IAM Auth - [internal-jwt] missing issuer claim")
 		return nil, fmt.Errorf("IAM_INVALID_ISSUER: missing issuer (iss) claim")
 	}
 
@@ -317,10 +344,12 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	expectedAudience := GetIAMJWTAudience()
 	if audience, ok := claims["aud"].(string); ok {
 		if audience != expectedAudience {
-			fmt.Println("IAM Auth - Invalid audience", "expected", expectedAudience, "got", audience)
+			fmt.Printf("IAM Auth - [internal-jwt] invalid audience expected=%s got=%s\n", expectedAudience, audience)
 			return nil, fmt.Errorf("IAM_INVALID_AUDIENCE: expected %s, got %s", expectedAudience, audience)
 		}
+		fmt.Printf("IAM Auth - [internal-jwt] audience ok: %s\n", audience)
 	} else {
+		fmt.Println("IAM Auth - [internal-jwt] missing audience claim")
 		return nil, fmt.Errorf("IAM_INVALID_AUDIENCE: missing audience (aud) claim")
 	}
 
@@ -401,6 +430,7 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	fmt.Printf("OwnerType: %s\n", iamClaims.OwnerType)
 	fmt.Printf("OwnerID: %s\n", iamClaims.OwnerID)
 	fmt.Println("===================================")
+	fmt.Printf("IAM Auth - [internal-jwt] success sub=%s subjectKind=%s\n", iamClaims.Sub, iamClaims.SubjectKind)
 
 	return iamClaims, nil
 }
@@ -430,41 +460,65 @@ type googleOIDCCertsCache struct {
 var googleCertsCache = &googleOIDCCertsCache{}
 
 func extractGoogleServiceClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
+	fmt.Printf("IAM Auth - [google-oidc] start path=%s\n", c.Request().URL.Path)
+
 	if !GetGoogleOIDCEnabled() {
+		fmt.Println("IAM Auth - [google-oidc] GOOGLE_OIDC_ENABLED is false, aborting")
 		return nil, errors.New("google oidc disabled")
 	}
+	fmt.Println("IAM Auth - [google-oidc] GOOGLE_OIDC_ENABLED=true")
 
 	tokenString, err := getBearerTokenFromRequest(c)
 	if err != nil {
+		fmt.Printf("IAM Auth - [google-oidc] bearer token error: %v\n", err)
 		return nil, err
 	}
 
+	alg, iss := peekJWTAlgAndIssuer(tokenString)
+	fmt.Printf("IAM Auth - [google-oidc] unverified metadata alg=%s iss=%s\n", alg, iss)
+
+	fmt.Println("IAM Auth - [google-oidc] parsing token with googleOIDCKeyFunc")
 	token, err := jwt.Parse(tokenString, googleOIDCKeyFunc)
 	if err != nil {
+		fmt.Printf("IAM Auth - [google-oidc] parse failed: %v\n", err)
 		return nil, fmt.Errorf("failed to parse google oidc token: %w", err)
 	}
 	if !token.Valid {
+		fmt.Println("IAM Auth - [google-oidc] token.Valid=false")
 		return nil, fmt.Errorf("invalid google oidc token")
 	}
+	fmt.Println("IAM Auth - [google-oidc] token parsed and valid")
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
+		fmt.Println("IAM Auth - [google-oidc] claims are not MapClaims")
 		return nil, fmt.Errorf("invalid google oidc claims")
 	}
 
+	fmt.Printf("IAM Auth - [google-oidc] validating claims iss=%s aud=%v email=%s\n",
+		extractStringClaim(claims, "iss"),
+		claims["aud"],
+		extractStringClaim(claims, "email"))
+
 	if err := validateGoogleOIDCClaims(claims); err != nil {
+		fmt.Printf("IAM Auth - [google-oidc] claim validation failed: %v\n", err)
 		return nil, err
 	}
+	fmt.Println("IAM Auth - [google-oidc] claim validation ok")
 
 	serviceAccount := extractStringClaim(claims, "email")
 	if serviceAccount == "" {
+		fmt.Println("IAM Auth - [google-oidc] missing email claim")
 		return nil, fmt.Errorf("google oidc token missing email claim")
 	}
 
 	allowedServiceAccounts := GetGoogleOIDCAllowedServiceAccounts()
+	fmt.Printf("IAM Auth - [google-oidc] allowed service accounts configured: %d\n", len(allowedServiceAccounts))
 	if len(allowedServiceAccounts) > 0 && !slices.Contains(allowedServiceAccounts, serviceAccount) {
+		fmt.Printf("IAM Auth - [google-oidc] service account not allowed: %s\n", serviceAccount)
 		return nil, fmt.Errorf("google oidc service account not allowed: %s", serviceAccount)
 	}
+	fmt.Printf("IAM Auth - [google-oidc] service account ok: %s\n", serviceAccount)
 
 	serviceScopesByAccount := GetGoogleOIDCServiceAccountScopes()
 	scopes := serviceScopesByAccount[serviceAccount]
@@ -491,26 +545,33 @@ func extractGoogleServiceClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 		OwnerID:     serviceAccount,
 	}
 
+	fmt.Printf("IAM Auth - [google-oidc] success sub=%s scopes=%v\n", iamClaims.Sub, iamClaims.Scopes)
 	return iamClaims, nil
 }
 
 func validateGoogleOIDCClaims(claims jwt.MapClaims) error {
 	issuer := extractStringClaim(claims, "iss")
 	if issuer == "" {
+		fmt.Println("IAM Auth - [google-oidc] validate: missing iss")
 		return fmt.Errorf("google oidc missing issuer (iss)")
 	}
 
 	allowedIssuers := GetGoogleOIDCAllowedIssuers()
+	fmt.Printf("IAM Auth - [google-oidc] validate: iss=%s allowedIssuers=%v\n", issuer, allowedIssuers)
 	if len(allowedIssuers) > 0 && !slices.Contains(allowedIssuers, issuer) {
+		fmt.Printf("IAM Auth - [google-oidc] validate: issuer rejected\n")
 		return fmt.Errorf("google oidc invalid issuer: %s", issuer)
 	}
 
 	audiences := extractAudienceClaims(claims)
 	if len(audiences) == 0 {
+		fmt.Println("IAM Auth - [google-oidc] validate: missing aud")
 		return fmt.Errorf("google oidc missing audience (aud)")
 	}
 	allowedAudiences := GetGoogleOIDCAllowedAudiences()
+	fmt.Printf("IAM Auth - [google-oidc] validate: tokenAudiences=%v allowedAudiences=%v\n", audiences, allowedAudiences)
 	if len(allowedAudiences) == 0 {
+		fmt.Println("IAM Auth - [google-oidc] validate: allowed audiences not configured")
 		return fmt.Errorf("google oidc allowed audiences not configured")
 	}
 
@@ -518,13 +579,16 @@ func validateGoogleOIDCClaims(claims jwt.MapClaims) error {
 	for _, aud := range audiences {
 		if slices.Contains(allowedAudiences, aud) {
 			matchesAudience = true
+			fmt.Printf("IAM Auth - [google-oidc] validate: audience matched %s\n", aud)
 			break
 		}
 	}
 	if !matchesAudience {
+		fmt.Printf("IAM Auth - [google-oidc] validate: no audience match\n")
 		return fmt.Errorf("google oidc invalid audience: %v", audiences)
 	}
 
+	fmt.Println("IAM Auth - [google-oidc] validate: all checks passed")
 	return nil
 }
 
@@ -567,19 +631,24 @@ func extractStringClaim(claims jwt.MapClaims, key string) string {
 
 func googleOIDCKeyFunc(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+		fmt.Printf("IAM Auth - [google-oidc] keyfunc rejected alg=%v (expected RSA)\n", token.Header["alg"])
 		return nil, fmt.Errorf("unexpected signing method for google oidc: %v", token.Header["alg"])
 	}
 
 	kid, _ := token.Header["kid"].(string)
 	if kid == "" {
+		fmt.Println("IAM Auth - [google-oidc] keyfunc: missing kid header")
 		return nil, fmt.Errorf("google oidc token missing kid header")
 	}
+	fmt.Printf("IAM Auth - [google-oidc] keyfunc: resolving public key for kid=%s\n", kid)
 
 	key, err := getGoogleOIDCPublicKey(kid)
 	if err != nil {
+		fmt.Printf("IAM Auth - [google-oidc] keyfunc: public key error: %v\n", err)
 		return nil, err
 	}
 
+	fmt.Println("IAM Auth - [google-oidc] keyfunc: public key resolved")
 	return key, nil
 }
 
@@ -588,12 +657,15 @@ func getGoogleOIDCPublicKey(kid string) (interface{}, error) {
 	if time.Now().Before(googleCertsCache.expiresAt) {
 		if key, ok := googleCertsCache.keys[kid]; ok {
 			googleCertsCache.mu.RUnlock()
+			fmt.Printf("IAM Auth - [google-oidc] certs cache hit for kid=%s\n", kid)
 			return key, nil
 		}
 	}
 	googleCertsCache.mu.RUnlock()
 
+	fmt.Printf("IAM Auth - [google-oidc] certs cache miss for kid=%s, refreshing\n", kid)
 	if err := refreshGoogleOIDCPublicKeys(); err != nil {
+		fmt.Printf("IAM Auth - [google-oidc] certs refresh failed: %v\n", err)
 		return nil, err
 	}
 
@@ -601,8 +673,10 @@ func getGoogleOIDCPublicKey(kid string) (interface{}, error) {
 	defer googleCertsCache.mu.RUnlock()
 	key, ok := googleCertsCache.keys[kid]
 	if !ok {
+		fmt.Printf("IAM Auth - [google-oidc] kid=%s not found after refresh, cached kids=%d\n", kid, len(googleCertsCache.keys))
 		return nil, fmt.Errorf("google oidc public key not found for kid: %s", kid)
 	}
+	fmt.Printf("IAM Auth - [google-oidc] kid=%s found after refresh\n", kid)
 	return key, nil
 }
 
@@ -612,20 +686,24 @@ func refreshGoogleOIDCPublicKeys() error {
 
 	// Avoid duplicate refresh if another goroutine already updated keys.
 	if time.Now().Before(googleCertsCache.expiresAt) && len(googleCertsCache.keys) > 0 {
+		fmt.Println("IAM Auth - [google-oidc] certs refresh skipped, cache still valid")
 		return nil
 	}
 
+	fmt.Println("IAM Auth - [google-oidc] fetching certs from googleapis.com/oauth2/v1/certs")
 	req, err := http.NewRequest(http.MethodGet, "https://www.googleapis.com/oauth2/v1/certs", nil)
 	if err != nil {
 		return fmt.Errorf("failed to build google certs request: %w", err)
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Printf("IAM Auth - [google-oidc] certs fetch network error: %v\n", err)
 		return fmt.Errorf("failed to fetch google oidc certs: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
+		fmt.Printf("IAM Auth - [google-oidc] certs fetch bad status: %d\n", res.StatusCode)
 		return fmt.Errorf("google oidc certs endpoint returned status: %d", res.StatusCode)
 	}
 
@@ -647,11 +725,14 @@ func refreshGoogleOIDCPublicKeys() error {
 		parsedKeys[certKid] = cert.PublicKey
 	}
 	if len(parsedKeys) == 0 {
+		fmt.Println("IAM Auth - [google-oidc] certs refresh: no valid keys parsed")
 		return fmt.Errorf("no valid google oidc certs parsed")
 	}
 
 	googleCertsCache.keys = parsedKeys
 	googleCertsCache.expiresAt = parseCacheControlMaxAge(res.Header.Get("Cache-Control"))
+	fmt.Printf("IAM Auth - [google-oidc] certs refresh ok, loaded %d keys, expiresAt=%s\n",
+		len(parsedKeys), googleCertsCache.expiresAt.Format(time.RFC3339))
 	return nil
 }
 
@@ -768,6 +849,7 @@ func reissueJWTWithIdempotencyKey(originalClaims *IAMClaims, idempotencyKey stri
 // IAMAuthMiddleware es el middleware de autorización IAM
 func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		fmt.Printf("IAM Auth - [middleware] enter path=%s method=%s\n", c.Request().URL.Path, c.Request().Method)
 
 		logger.LogInfo(fmt.Sprintf("URL Path: %s", c.Request().URL.Path), c.Request())
 
@@ -787,18 +869,25 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		iamCtx := &IAMContext{}
 
 		jwtRequired := GetJWTRequired()
+		pathExcluded := slices.Contains(excludeJWTPaths, c.Request().URL.Path)
+		bypassByIP := shouldBypassRequirePermDBByIP(c)
+		fmt.Printf("IAM Auth - [middleware] jwtRequired=%v pathExcluded=%v bypassByIP=%v\n", jwtRequired, pathExcluded, bypassByIP)
 
-		if !slices.Contains(excludeJWTPaths, c.Request().URL.Path) && jwtRequired && !shouldBypassRequirePermDBByIP(c) {
+		if !pathExcluded && jwtRequired && !bypassByIP {
+			fmt.Println("IAM Auth - [middleware] auth required, starting token extraction")
 
 			currentIdempotencyKey := c.Request().Header.Get("Idempotency-Key")
 
 			// Extraer y validar claims del JWT
 			claims, err := extractIAMClaimsFromRequest(c)
 			if err != nil {
+				fmt.Printf("IAM Auth - [middleware] internal JWT failed: %v\n", err)
+				fmt.Println("IAM Auth - [middleware] trying Google OIDC fallback")
 				logger.LogInfo(fmt.Sprintf("IAM auth failed with internal JWT, trying Google OIDC fallback: %v", err), c.Request())
 
 				googleClaims, googleErr := extractGoogleServiceClaimsFromRequest(c)
 				if googleErr != nil {
+					fmt.Printf("IAM Auth - [middleware] Google OIDC fallback failed: %v\n", googleErr)
 					logger.LogInfo(fmt.Sprintf("IAM auth failed: internal JWT and Google OIDC fallback failed: %v", googleErr), c.Request())
 
 					// Determinar código de error específico basado en el mensaje
@@ -812,13 +901,17 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 						errorMsg = strings.TrimPrefix(errorMsg, "IAM_INVALID_AUDIENCE: ")
 					}
 
+					fmt.Printf("IAM Auth - [middleware] returning 401 code=%s msg=%s\n", errorCode, errorMsg)
 					return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 						"message": errormap.GenerateErrorMessage(errorCode, errorMsg),
 						"code":    errorCode,
 					})
 				}
 
+				fmt.Println("IAM Auth - [middleware] Google OIDC fallback succeeded")
 				claims = googleClaims
+			} else {
+				fmt.Println("IAM Auth - [middleware] internal JWT succeeded")
 			}
 
 			var validateJWT = true
@@ -865,13 +958,14 @@ func IAMAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 			}
 
+		} else {
+			fmt.Println("IAM Auth - [middleware] auth skipped (excluded path, jwt not required, or IP bypass)")
 		}
 
 		// Agregar IAMContext al contexto de la request
-		fmt.Println("IAM Auth - Setting IAM context in request")
+		fmt.Println("IAM Auth - [middleware] setting IAM context, calling next handler")
 		ctx := context.WithValue(c.Request().Context(), IAMContextKey, iamCtx)
 		c.SetRequest(c.Request().WithContext(ctx))
-		fmt.Println("IAM Auth - IAMClaims set in Echo context, calling next handler")
 
 		return next(c)
 	}
