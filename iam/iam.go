@@ -1604,7 +1604,7 @@ func RequirePermDB(requiredPerm string) echo.MiddlewareFunc {
 			if IsPermissionSensitive(requiredPerm) {
 				// Permitir platform_admin, treasury_approver o tenant_admin (si tiene el permiso en scopes, se valida después)
 				userType := claims.UserType
-				if userType != "platform_admin" && userType != "treasury_approver" && userType != "tenant_admin" && userType != "service_account" {
+				if userType != "customer_admin" && userType != "platform_admin" && userType != "treasury_approver" && userType != "tenant_admin" && userType != "service_account" {
 					return c.JSON(http.StatusForbidden, map[string]interface{}{
 						"success": false,
 						"error": map[string]interface{}{
