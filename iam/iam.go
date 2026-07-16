@@ -29,6 +29,7 @@ type IAMClaims struct {
 	SubjectKind    string   `json:"subject_kind"`    // "human"
 	IDP            string   `json:"idp"`             // "gidp"
 	IDPSub         string   `json:"idp_sub"`         // UID del usuario en GIDP
+	Email          string   `json:"email,omitempty"` // email del usuario (auditoría / actor)
 	UserType       string   `json:"user_type"`       // platform_admin, tenant_admin, support, auditor
 	TenantID       *string  `json:"tenant_id"`       // UUID del tenant o null
 	CountryCode    string   `json:"country_code"`    // ISO 3166 (ej: "CR")
@@ -364,6 +365,18 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 		iamClaims.SubjectKind = subjectKind
 	}
 
+	if idp, ok := claims["idp"].(string); ok {
+		iamClaims.IDP = idp
+	}
+
+	if idpSub, ok := claims["idp_sub"].(string); ok {
+		iamClaims.IDPSub = idpSub
+	}
+
+	if email, ok := claims["email"].(string); ok {
+		iamClaims.Email = email
+	}
+
 	if userType, ok := claims["user_type"].(string); ok {
 		iamClaims.UserType = userType
 	}
@@ -419,6 +432,9 @@ func extractIAMClaimsFromRequest(c echo.Context) (*IAMClaims, error) {
 	fmt.Println("=== IAM TOKEN CLAIMS EXTRAÍDOS ===")
 	fmt.Printf("Sub: %s\n", iamClaims.Sub)
 	fmt.Printf("SubjectKind: %s\n", iamClaims.SubjectKind)
+	fmt.Printf("IDP: %s\n", iamClaims.IDP)
+	fmt.Printf("IDPSub: %s\n", iamClaims.IDPSub)
+	fmt.Printf("Email: %s\n", iamClaims.Email)
 	fmt.Printf("UserType: %s\n", iamClaims.UserType)
 	fmt.Printf("CountryCode: %s\n", iamClaims.CountryCode)
 	fmt.Printf("Channel: %s\n", iamClaims.Channel)
@@ -832,8 +848,19 @@ func reissueJWTWithIdempotencyKey(originalClaims *IAMClaims, idempotencyKey stri
 		"idempotency_key": idempotencyKey,
 	}
 
+	if originalClaims.Email != "" {
+		jwtClaims["email"] = originalClaims.Email
+	}
+
 	if originalClaims.TenantID != nil {
 		jwtClaims["tenant_id"] = *originalClaims.TenantID
+	}
+
+	if originalClaims.OwnerType != "" {
+		jwtClaims["owner_type"] = originalClaims.OwnerType
+	}
+	if originalClaims.OwnerID != "" {
+		jwtClaims["owner_id"] = originalClaims.OwnerID
 	}
 
 	// Crear y firmar el nuevo token
