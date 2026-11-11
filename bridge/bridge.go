@@ -2,12 +2,19 @@ package bridge
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
+	"sync"
 	"time"
+
+	"golang.org/x/oauth2"
+	"google.golang.org/api/idtoken"
 )
 
 type MicroserviceClient struct {
@@ -32,6 +39,90 @@ type Response struct {
 
 var MicroserviceC *MicroserviceClient
 
+const headerServerlessAuthorization = "X-Serverless-Authorization"
+
+// idTokenTransport mints a Google Cloud ID token (ADC / Cloud Run SA metadata)
+// and sets X-Serverless-Authorization so Cloud Run IAM can authenticate the hop
+// without overwriting an application Authorization Bearer (Multipay IAM JWT).
+type idTokenTransport struct {
+	base     http.RoundTripper
+	audience string
+
+	mu sync.Mutex
+	ts oauth2.TokenSource
+}
+
+func (t *idTokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+
+	ts, err := t.tokenSource(req.Context())
+	if err != nil {
+		return nil, fmt.Errorf("bridge: id token source (audience=%s): %w", t.audience, err)
+	}
+	token, err := ts.Token()
+	if err != nil {
+		return nil, fmt.Errorf("bridge: id token fetch (audience=%s): %w", t.audience, err)
+	}
+	if token == nil || strings.TrimSpace(token.AccessToken) == "" {
+		return nil, fmt.Errorf("bridge: empty id token (audience=%s)", t.audience)
+	}
+
+	req2 := req.Clone(req.Context())
+	req2.Header.Set(headerServerlessAuthorization, "Bearer "+token.AccessToken)
+	return base.RoundTrip(req2)
+}
+
+func (t *idTokenTransport) tokenSource(ctx context.Context) (oauth2.TokenSource, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.ts != nil {
+		return t.ts, nil
+	}
+	ts, err := idtoken.NewTokenSource(ctx, t.audience)
+	if err != nil {
+		return nil, err
+	}
+	t.ts = ts
+	return ts, nil
+}
+
+// cloudRunAudience returns scheme://host for HTTPS Cloud Run targets that need IAM auth.
+// Localhost, plain HTTP, and empty URLs skip ID token injection.
+func cloudRunAudience(rawURL string) (string, bool) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return "", false
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return "", false
+	}
+	if !strings.EqualFold(u.Scheme, "https") {
+		return "", false
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return "", false
+	}
+	return u.Scheme + "://" + u.Host, true
+}
+
+func newHTTPClient(baseURL string) *http.Client {
+	client := &http.Client{
+		Timeout: 120 * time.Second,
+	}
+	if audience, ok := cloudRunAudience(baseURL); ok {
+		client.Transport = &idTokenTransport{
+			base:     http.DefaultTransport,
+			audience: audience,
+		}
+	}
+	return client
+}
+
 func NewMicroserviceClient() *MicroserviceClient {
 	baseURL := os.Getenv("GATEWAY_URL")
 	if baseURL == "" {
@@ -39,10 +130,8 @@ func NewMicroserviceClient() *MicroserviceClient {
 	}
 
 	MicroserviceC = &MicroserviceClient{
-		BaseURL: baseURL,
-		HTTPClient: &http.Client{
-			Timeout: 120 * time.Second,
-		},
+		BaseURL:    baseURL,
+		HTTPClient: newHTTPClient(baseURL),
 	}
 	return MicroserviceC
 }
